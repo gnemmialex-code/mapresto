@@ -1,0 +1,45 @@
+name: parismap_video_guide
+description: "ParisMap Video Guide - carte interactive des bars, restaurants et hotels avec filtres, fiches video et collections partageables."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Gestion d'etat : provider est le choix le plus simple a mettre en place
+  # pour un MVP (peu de boilerplate, ChangeNotifier + Consumer suffisent).
+  provider: ^6.1.2
+
+  # Carte : flutter_map + OpenStreetMap = aucune cle API requise (ideal MVP).
+  # Pour passer a Google Maps plus tard : remplacer par google_maps_flutter.
+  flutter_map: ^8.1.0
+  latlong2: ^0.9.1
+
+  # Lecture video dans la fiche lieu.
+  video_player: ^2.9.2
+
+  # Chargement + cache des photos distantes (placeholders).
+  cached_network_image: ^3.4.1
+
+  # Ouverture de liens externes (Google Maps, Instagram, site web).
+  url_launcher: ^6.3.1
+
+  # Carte native Google Maps (vraie 3D / tilt sur Android & iOS).
+  # Activee uniquement quand AppConfig.useNativeGoogleMaps == true + cle API.
+  google_maps_flutter: ^2.9.0
+
+  # Geolocalisation pour "Autour de moi" (web + mobile).
+  geolocator: ^13.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

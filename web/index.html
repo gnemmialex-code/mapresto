@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="ParisMap Video Guide">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="parismap_video_guide">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>ParisMap · iPhone 16</title>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    :root {
+      /* iPhone 16 : viewport logique 393 x 852 pt */
+      --w: 393px;
+      --h: 852px;
+      --radius: 56px;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: radial-gradient(circle at 50% 18%, #2a2a35 0%, #0d0d12 70%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+    }
+
+    /* Châssis du téléphone (tranche titane + bezel noir) */
+    .phone {
+      position: relative;
+      border-radius: var(--radius);
+      background: #0a0a0a;
+      padding: 12px;
+      box-shadow:
+        0 0 0 2px #2c2c2e,
+        0 0 0 12px #3a3a3c,
+        0 0 0 13px #1c1c1e,
+        0 30px 80px rgba(0,0,0,.65);
+    }
+
+    /* Écran : c'est l'élément hôte de Flutter */
+    #flutter-screen {
+      position: relative;
+      width: var(--w);
+      height: var(--h);
+      border-radius: calc(var(--radius) - 12px);
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    /* Dynamic Island (superposée par-dessus l'app) */
+    .island {
+      position: absolute;
+      top: 11px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 124px;
+      height: 35px;
+      background: #000;
+      border-radius: 20px;
+      z-index: 2147483000;
+      pointer-events: none;
+    }
+
+    /* Boutons latéraux */
+    .btn {
+      position: absolute;
+      background: linear-gradient(180deg, #4a4a4d, #2a2a2c);
+      border-radius: 2px 0 0 2px;
+    }
+    .btn.right { border-radius: 0 2px 2px 0; }
+    .action  { left: -15px; top: 130px; width: 4px; height: 30px; }
+    .vol-up  { left: -15px; top: 185px; width: 4px; height: 58px; }
+    .vol-dn  { left: -15px; top: 255px; width: 4px; height: 58px; }
+    .power   { right: -15px; top: 205px; width: 4px; height: 95px; }
+
+    .hint {
+      position: fixed;
+      bottom: 12px;
+      color: #8a8a96;
+      font-size: 12px;
+      letter-spacing: .3px;
+    }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <span class="btn action"></span>
+    <span class="btn vol-up"></span>
+    <span class="btn vol-dn"></span>
+    <span class="btn right power"></span>
+    <!-- Flutter rend directement dans cet élément (instance unique) -->
+    <div id="flutter-screen">
+      <div class="island"></div>
+    </div>
+  </div>
+  <div class="hint">ParisMap Video Guide — iPhone 16 (393 × 852)</div>
+
+  <!-- Chargement Flutter ciblant hostElement = l'écran du téléphone.
+       Les jetons {{flutter_js}} et {{flutter_build_config}} sont remplaces
+       par `flutter build web` (ils fournissent la config de build, sans
+       laquelle l'app ne sait pas quel point d'entree charger). -->
+  <script>
+    {{flutter_js}}
+    {{flutter_build_config}}
+
+    window.addEventListener('load', function () {
+      _flutter.loader.load({
+        onEntrypointLoaded: async function (engineInitializer) {
+          const appRunner = await engineInitializer.initializeEngine({
+            hostElement: document.getElementById('flutter-screen'),
+          });
+          await appRunner.runApp();
+        },
+      });
+    });
+  </script>
+</body>
+</html>
