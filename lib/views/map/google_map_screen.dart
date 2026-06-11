@@ -41,6 +41,12 @@ class _GoogleMapScreenState extends State<GoogleMapScreen> {
         return BitmapDescriptor.hueOrange;
       case PlaceType.hotel:
         return BitmapDescriptor.hueAzure;
+      case PlaceType.rooftop:
+        return BitmapDescriptor.hueYellow;
+      case PlaceType.parc:
+        return BitmapDescriptor.hueGreen;
+      case PlaceType.adresse:
+        return BitmapDescriptor.hueRose;
     }
   }
 

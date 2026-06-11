@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -6,6 +5,7 @@ import '../../models/place.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/place_visuals.dart';
+import '../../widgets/place_photo.dart';
 import '../../widgets/primary_button.dart';
 import '../place_detail/place_detail_screen.dart';
 
@@ -136,11 +136,9 @@ class _Header extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           if (place.photos.isNotEmpty)
-            CachedNetworkImage(
-              imageUrl: place.photos.first,
-              fit: BoxFit.cover,
-              placeholder: (_, _) => Container(color: color.withValues(alpha: 0.3)),
-              errorWidget: (_, _, _) => Container(color: color),
+            PlacePhoto(
+              path: place.photos.first,
+              fallbackColor: color,
             )
           else
             Container(color: color),

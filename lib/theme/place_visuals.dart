@@ -16,6 +16,12 @@ class PlaceVisuals {
         return AppColors.restaurant;
       case PlaceType.hotel:
         return AppColors.hotel;
+      case PlaceType.rooftop:
+        return AppColors.rooftop;
+      case PlaceType.parc:
+        return AppColors.parc;
+      case PlaceType.adresse:
+        return AppColors.adresse;
     }
   }
 
@@ -27,6 +33,12 @@ class PlaceVisuals {
         return Icons.restaurant;
       case PlaceType.hotel:
         return Icons.hotel;
+      case PlaceType.rooftop:
+        return Icons.deck;
+      case PlaceType.parc:
+        return Icons.park;
+      case PlaceType.adresse:
+        return Icons.photo_camera;
     }
   }
 }

@@ -17,8 +17,10 @@ class CollectionsViewModel extends ChangeNotifier {
   CollectionsViewModel({
     required MockDataService dataService,
     required SharingService sharingService,
+    required List<Place> places,
   })  : _dataService = dataService,
-        _sharingService = sharingService {
+        _sharingService = sharingService,
+        _catalog = places {
     _collections = List.of(_dataService.getUserCollections());
     // Carte perso vide au depart (plan gratuit).
     _myMap = UserCollection(
@@ -48,6 +50,7 @@ class CollectionsViewModel extends ChangeNotifier {
 
   final MockDataService _dataService;
   final SharingService _sharingService;
+  final List<Place> _catalog;
 
   late List<UserCollection> _collections;
   UserCollection? _lastImported;
@@ -70,7 +73,7 @@ class CollectionsViewModel extends ChangeNotifier {
       _dataService.getInfluencerCollections();
 
   /// Catalogue complet des lieux (pour construire sa carte).
-  List<Place> get catalog => _dataService.getPlaces();
+  List<Place> get catalog => _catalog;
 
   // ---- Carte perso / espace createur ----
   UserCollection get myMap => _myMap;

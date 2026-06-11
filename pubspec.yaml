@@ -36,6 +36,12 @@ dependencies:
   # Geolocalisation pour "Autour de moi" (web + mobile).
   geolocator: ^13.0.0
 
+  # Backend Supabase : lieux geres depuis le dashboard (add/edit/delete).
+  supabase_flutter: ^2.8.0
+
+  # Appels HTTP directs (Anthropic API pour la Recherche IA).
+  http: ^1.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -43,3 +49,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/places/

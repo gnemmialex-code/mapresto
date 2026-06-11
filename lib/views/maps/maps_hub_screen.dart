@@ -269,7 +269,6 @@ class _FeatureGrid extends StatelessWidget {
       final left = items[i];
       final right = i + 1 < items.length ? items[i + 1] : null;
       rows.add(Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(child: _FeatureTile(left)),
           const SizedBox(width: 12),

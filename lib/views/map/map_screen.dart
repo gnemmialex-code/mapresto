@@ -143,7 +143,7 @@ class _MapScreenState extends State<MapScreen> {
             bottom: 2,
             left: 6,
             child: Text(
-              mapAttribution(_style),
+              mapAttribution(_style, dark: mapDark),
               style: const TextStyle(fontSize: 9, color: Colors.black54),
             ),
           ),

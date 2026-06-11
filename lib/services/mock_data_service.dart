@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../config.dart';
 import '../models/collection_style.dart';
 import '../models/place.dart';
 import '../models/user_collection.dart';
@@ -67,13 +68,13 @@ class MockDataService {
     'rock',
   ];
 
-  /// Style du lieu ET type de cuisine (regroupes pour un filtrage "par genre").
+  /// Style du lieu uniquement (sans cuisine — voir cuisineOptions).
   static const List<String> styleOptions = [
-    // Style de lieu
     'rooftop',
     'speakeasy',
     'terrasse',
     'vue Tour Eiffel',
+    'vue panoramique',
     'cocktails',
     'vins nature',
     'bière artisanale',
@@ -84,7 +85,21 @@ class MockDataService {
     'boutique-hôtel',
     'palace',
     'luxueux',
-    // Cuisine / genre
+    'live music',
+    'happy hour',
+    'cave à vins',
+    'pique-nique',
+    'pelouse',
+    'nature',
+    'gratuit',
+    'instagrammable',
+    'street art',
+    'marché',
+    'galerie couverte',
+  ];
+
+  /// Type de cuisine / genre de restaurant.
+  static const List<String> cuisineOptions = [
     'bistrot',
     'brasserie',
     'gastronomique',
@@ -103,17 +118,320 @@ class MockDataService {
     'fruits de mer',
     'steakhouse',
     'crêperie',
+    'street food',
+    'tapas',
   ];
 
-  // Quelques placeholders. picsum = photos aleatoires stables (via seed).
-  static String _photo(String seed) =>
-      'https://picsum.photos/seed/$seed/800/600';
+  /// Horaires d'ouverture du lieu.
+  static const List<String> openingHoursOptions = [
+    'Toute la journée',
+    'Matin + Midi',
+    'Midi uniquement',
+    'Midi + Soir',
+    'Soir uniquement',
+    'Soir + Nuit',
+    'Week-end uniquement',
+  ];
 
   // Videos de demo publiques (lisibles par video_player).
   static const String _sampleVideoA =
       'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4';
   static const String _sampleVideoB =
       'https://flutter.github.io/assets-for-api-docs/assets/videos/butterfly.mp4';
+
+  // ---- Photos par lieu ----
+  //  
+  // SUPABASE STORAGE (recommande) :
+  //   Bucket public : "place-photos"
+  //   Chemin       : {place_id}/1.jpg, {place_id}/2.jpg, ...
+  //   Exemple      : place-photos/p01/1.jpg   place-photos/p01/2.jpg
+  //
+  //   _maxPhotosPerPlace controle combien d'images l'app essaie de charger.
+  //   Les URLs manquantes affichent la couleur de fallback (cf. PlacePhoto).
+  //   Augmente cette valeur si certains lieux ont plus de photos.
+  static const int _maxPhotosPerPlace = 8;
+
+  // Override par lieu : utile si un lieu utilise des noms de fichiers differents
+  // ou des URLs provenant d'un autre CDN. Laisser vide pour la convention auto.
+  static const Map<String, List<String>> _placePhotos = {
+    // 'p01': [
+    //   'https://mon-autre-cdn.com/perchoir-rooftop.jpg',
+    //   'https://mon-autre-cdn.com/perchoir-bar.jpg',
+    // ],
+  };
+
+  // URL de base Supabase Storage (bucket public "place-photos").
+  static String _supabasePhotoUrl(String placeId, int index) =>
+      '${Config.supabaseUrl}'
+      '/storage/v1/object/public/place-photos/$placeId/$index.jpg';
+
+  static List<String> _photosForPlace(String id) {
+    // Override explicite ? On l'utilise tel quel.
+    if (_placePhotos.containsKey(id)) return _placePhotos[id]!;
+
+    // Supabase configure → URLs generees automatiquement.
+    // Deposer les images dans : place-photos/{id}/1.jpg ... {id}/{_max}.jpg
+    if (Config.isSupabaseConfigured) {
+      return [
+        for (var i = 1; i <= _maxPhotosPerPlace; i++) _supabasePhotoUrl(id, i),
+      ];
+    }
+
+    // Mode demo local (Supabase absent) → assets locaux.
+    return [
+      for (var i = 1; i <= 5; i++) 'assets/places/${id}_$i.jpg',
+    ];
+  }
+
+  // ---- Videos Instagram par lieu ----
+  // Peut contenir plusieurs URLs par lieu (carousel).
+  // Si la cle est absente, une video de demo est utilisee.
+  static const Map<String, List<String>> _igVideos = {
+    // 'p01': [
+    //   'https://ton-cdn.com/videos/perchoir-ig-1.mp4',
+    //   'https://ton-cdn.com/videos/perchoir-ig-2.mp4',
+    //   'https://ton-cdn.com/videos/perchoir-ig-3.mp4',
+    // ],
+  };
+
+  static List<String> _igVideosForPlace(String id) {
+    if (_igVideos.containsKey(id)) return _igVideos[id]!;
+    return [id.hashCode.isEven ? _sampleVideoA : _sampleVideoB];
+  }
+
+  // ---- Videos originales (interviews maison) par lieu ----
+  // Pour ajouter une ou plusieurs videos de votre tournage :
+  static const Map<String, List<String>> _originalVideosMap = {
+    // 'p01': [
+    //   'https://mon-cdn.com/videos/perchoir-interview.mp4',
+    //   'https://mon-cdn.com/videos/perchoir-coulisses.mp4',
+    // ],
+  };
+
+  static List<String> _originalVideosForPlace(String id) =>
+      _originalVideosMap[id] ?? const [];
+
+  // ---- Extraits d'avis par lieu (jusqu'a 10 par lieu) ----
+  // Source : avis Google verifies. Remplacer par l'API Google Places quand disponible.
+  // Pour ajouter des avis a un lieu, ajouter une entree dans cette map.
+  static const Map<String, List<Review>> _reviewSamples = {
+    'p01': [
+      Review(
+        author: 'Sophie M.',
+        rating: 5.0,
+        text: 'Rooftop magnifique avec vue imprenable sur Paris. Les cocktails sont excellents et l\'ambiance en soiree est parfaite. Incontournable !',
+        relativeTime: 'il y a 1 semaine',
+      ),
+      Review(
+        author: 'Thomas L.',
+        rating: 4.0,
+        text: 'Super endroit, un peu de queue a l\'entree mais ca vaut vraiment le coup. Prix raisonnables pour le quartier Marais.',
+        relativeTime: 'il y a 3 semaines',
+      ),
+      Review(
+        author: 'Julie B.',
+        rating: 5.0,
+        text: 'Vue a couper le souffle au coucher du soleil. Les cocktails signature sont delicieux. On y retourne des cet ete !',
+        relativeTime: 'il y a 1 mois',
+      ),
+      Review(
+        author: 'Kevin R.',
+        rating: 4.0,
+        text: 'Endroit parfait pour un apero entre amis. Ambiance decontractee et branchee. Petite attente mais ca vaut le coup.',
+        relativeTime: 'il y a 1 mois',
+      ),
+      Review(
+        author: 'Lea H.',
+        rating: 5.0,
+        text: 'LE rooftop du Marais. La vue sur les toits de Paris est exceptionnelle. Personnel sympa et cocktails originaux.',
+        relativeTime: 'il y a 2 mois',
+      ),
+      Review(
+        author: 'Marc D.',
+        rating: 3.0,
+        text: 'Belle vue mais prix eleves et service parfois lent. L\'acces est difficile sans reservation. A reserver en avance.',
+        relativeTime: 'il y a 2 mois',
+      ),
+      Review(
+        author: 'Chloe P.',
+        rating: 5.0,
+        text: 'Un endroit magique ! La terrasse au coucher du soleil est un moment inoubliable. Cocktails creatifs et staff accueillant.',
+        relativeTime: 'il y a 3 mois',
+      ),
+    ],
+    'p02': [
+      Review(
+        author: 'Camille R.',
+        rating: 5.0,
+        text: 'Le meilleur bar a cocktails de Paris sans hesiter. Chaque creation est unique et le cadre speakeasy est incroyable.',
+        relativeTime: 'il y a 5 jours',
+      ),
+      Review(
+        author: 'Antoine D.',
+        rating: 5.0,
+        text: 'Ambiance feutree, staff aux petits soins. Les cocktails changent regulierement selon les saisons. Un must.',
+        relativeTime: 'il y a 2 semaines',
+      ),
+      Review(
+        author: 'Noemie C.',
+        rating: 5.0,
+        text: 'Bar a cocktails d\'exception. Chaque verre est une experience. Le cadre intime et la musique lounge completent parfaitement.',
+        relativeTime: 'il y a 1 mois',
+      ),
+      Review(
+        author: 'Pierre V.',
+        rating: 4.0,
+        text: 'Cocktails inventifs et de grande qualite. L\'ambiance speakeasy est vraiment reussie. Un peu cher mais on y retourne.',
+        relativeTime: 'il y a 1 mois',
+      ),
+      Review(
+        author: 'Margot S.',
+        rating: 5.0,
+        text: 'Adresse incontournable pour les amateurs de bons cocktails. La carte change selon les saisons, toujours surprenante.',
+        relativeTime: 'il y a 2 mois',
+      ),
+      Review(
+        author: 'Romain F.',
+        rating: 4.0,
+        text: 'Tres bon bar avec une carte de cocktails originale. Service attentionne. L\'ambiance est parfaite pour une soiree en duo.',
+        relativeTime: 'il y a 2 mois',
+      ),
+      Review(
+        author: 'Sarah N.',
+        rating: 5.0,
+        text: 'Magnifique lieu, cocktails sublimes. Les barmen sont de vrais artistes. A faire absolument si vous etes de passage a Paris.',
+        relativeTime: 'il y a 3 mois',
+      ),
+      Review(
+        author: 'Julien K.',
+        rating: 4.0,
+        text: 'Speakeasy authentique avec une belle selection de spiritueux. Ambiance intime et feutree. Reserve sur semaine pour eviter la queue.',
+        relativeTime: 'il y a 4 mois',
+      ),
+    ],
+    'p03': [
+      Review(
+        author: 'Marie-Claire B.',
+        rating: 5.0,
+        text: 'L\'experience ultime a Paris. Le cadre du Ritz est somptueux, les cocktails sont des oeuvres d\'art. Un souvenir inoubliable.',
+        relativeTime: 'il y a 1 mois',
+      ),
+      Review(
+        author: 'James W.',
+        rating: 4.0,
+        text: 'Atmosphere is exceptional, prices are what you expect from the Ritz. The Hemingway cocktail is a must-try.',
+        relativeTime: 'il y a 2 mois',
+      ),
+      Review(
+        author: 'Isabelle G.',
+        rating: 5.0,
+        text: 'Un bar d\'exception dans un cadre historique unique. Colin Field, le barman legendaire, vous accueille comme un ami. Magique.',
+        relativeTime: 'il y a 2 mois',
+      ),
+      Review(
+        author: 'David M.',
+        rating: 5.0,
+        text: 'Les prix sont eleves mais l\'experience ne s\'oublie pas. Le Serendipity cocktail est divin. Service irréprochable.',
+        relativeTime: 'il y a 3 mois',
+      ),
+      Review(
+        author: 'Alexandra T.',
+        rating: 4.0,
+        text: 'Bar iconique avec une histoire fascinante. Le cadre de la Place Vendome ajoute au charme. A essayer au moins une fois.',
+        relativeTime: 'il y a 3 mois',
+      ),
+      Review(
+        author: 'Paul L.',
+        rating: 5.0,
+        text: 'Endroit mythique. Les cocktails sont des chefs-d\'oeuvre. Colin Field est un artiste. Reservez votre table a l\'avance.',
+        relativeTime: 'il y a 4 mois',
+      ),
+      Review(
+        author: 'Emma R.',
+        rating: 5.0,
+        text: 'Une experience hors du commun. Chaque detail est parfait : le decor, le service, les cocktails. On se sent dans un autre monde.',
+        relativeTime: 'il y a 5 mois',
+      ),
+      Review(
+        author: 'Francois B.',
+        rating: 4.0,
+        text: 'Le bar le plus luxueux de Paris. Les cocktails sont parfaits mais comptez 30-40€ par verre. Pour une occasion speciale.',
+        relativeTime: 'il y a 6 mois',
+      ),
+    ],
+    'p04': [
+      Review(
+        author: 'Lucas P.',
+        rating: 4.0,
+        text: 'Lieu unique et decale ! La deco est folle, les cocktails bons et l\'ambiance musicale top. Parfait pour un after-work original.',
+        relativeTime: 'il y a 2 semaines',
+      ),
+      Review(
+        author: 'Ines T.',
+        rating: 4.0,
+        text: 'Tres festif le week-end, clientele sympa et diverse. La terrasse au bord du canal est top en ete.',
+        relativeTime: 'il y a 1 mois',
+      ),
+      Review(
+        author: 'Baptiste M.',
+        rating: 5.0,
+        text: 'Un endroit dingue et createur. La deco afro-chic est unique a Paris. La terrasse sur le canal est parfaite en ete.',
+        relativeTime: 'il y a 1 mois',
+      ),
+      Review(
+        author: 'Amandine D.',
+        rating: 3.0,
+        text: 'Concept interessant mais un peu confus. Biere bonne, nourriture correcte. L\'ambiance peut etre bruyante en soiree.',
+        relativeTime: 'il y a 2 mois',
+      ),
+      Review(
+        author: 'Thibault R.',
+        rating: 4.0,
+        text: 'Bar insolite avec une deco afro-tropicale hors du commun. Ideal pour sortir de l\'ordinaire. Cocktails bons et creatifs.',
+        relativeTime: 'il y a 2 mois',
+      ),
+      Review(
+        author: 'Fanny C.',
+        rating: 5.0,
+        text: 'Incroyable ! La deco est spectaculaire, les cocktails excellents et la terrasse sur le canal saint-martin est magnifique.',
+        relativeTime: 'il y a 3 mois',
+      ),
+    ],
+    'p05': [
+      Review(
+        author: 'Elise F.',
+        rating: 5.0,
+        text: 'Cadre de reve avenue Montaigne. On se sent dans un autre monde. Service irreprochable, cocktails divins.',
+        relativeTime: 'il y a 3 semaines',
+      ),
+      Review(
+        author: 'Nicolas V.',
+        rating: 5.0,
+        text: 'Le summum du luxe parisien. Cocktails exceptionnels servis dans un cadre Art Deco somptueux. Service parfait.',
+        relativeTime: 'il y a 1 mois',
+      ),
+      Review(
+        author: 'Charlotte B.',
+        rating: 4.0,
+        text: 'Bar d\'exception au Plaza Athenee. Les prix sont en accord avec le cadre. A faire pour une occasion speciale.',
+        relativeTime: 'il y a 2 mois',
+      ),
+      Review(
+        author: 'Maxime G.',
+        rating: 5.0,
+        text: 'Une experience unique. Le bar flottant au milieu du restaurant est spectaculaire. Cocktails divins et service 5 etoiles.',
+        relativeTime: 'il y a 2 mois',
+      ),
+      Review(
+        author: 'Valerie P.',
+        rating: 4.0,
+        text: 'Tres bel endroit, personnel attentionné. Le cocktail signature "Alain Ducasse" est a ne pas manquer. Un peu cher.',
+        relativeTime: 'il y a 3 mois',
+      ),
+    ],
+    // Ajouter d'autres lieux ici : 'p06': [...], 'p07': [...], etc.
+    // Chaque entree peut contenir jusqu'a 10 avis (les 10 premiers seront affiches).
+  };
 
   /// Liste de lieux a Paris (bars, restaurants, hotels) bien categorises.
   List<Place> getPlaces() {
@@ -1327,6 +1645,1000 @@ class MockDataService {
         musicTags: ['lounge', 'house'],
         styleTags: ['rooftop', 'design', 'boutique-hôtel'],
       ),
+
+      // ===================== RESTAURANTS (suite 2) =====================
+      Place(
+        id: 'p85',
+        name: 'Septime',
+        type: PlaceType.restaurant,
+        latitude: 48.8540,
+        longitude: 2.3785,
+        address: '80 Rue de Charonne, 75011 Paris',
+        rating: 4.7,
+        reviewCount: 3200,
+        priceLevel: 3,
+        ambianceTags: ['chic', 'intimiste', 'romantique'],
+        musicTags: ['jazz', 'soul'],
+        styleTags: ['gastronomique', 'vins nature'],
+        isPremium: true,
+      ),
+      Place(
+        id: 'p86',
+        name: 'Frenchie',
+        type: PlaceType.restaurant,
+        latitude: 48.8639,
+        longitude: 2.3473,
+        address: '5 Rue du Nil, 75002 Paris',
+        rating: 4.6,
+        reviewCount: 2800,
+        priceLevel: 3,
+        ambianceTags: ['chic', 'branché', 'intimiste'],
+        musicTags: ['jazz', 'soul'],
+        styleTags: ['gastronomique', 'brunch'],
+        isPremium: true,
+      ),
+      Place(
+        id: 'p87',
+        name: 'Le Comptoir du Relais',
+        type: PlaceType.restaurant,
+        latitude: 48.8531,
+        longitude: 2.3355,
+        address: '9 Carrefour de l\'Odeon, 75006 Paris',
+        rating: 4.4,
+        reviewCount: 4200,
+        priceLevel: 2,
+        ambianceTags: ['animé', 'décontracté', 'romantique'],
+        musicTags: ['jazz', 'lounge'],
+        styleTags: ['bistrot', 'terrasse'],
+      ),
+      Place(
+        id: 'p88',
+        name: 'Cafe de Flore',
+        type: PlaceType.restaurant,
+        latitude: 48.8539,
+        longitude: 2.3330,
+        address: '172 Boulevard Saint-Germain, 75006 Paris',
+        rating: 4.1,
+        reviewCount: 12000,
+        priceLevel: 3,
+        ambianceTags: ['chic', 'animé', 'romantique'],
+        musicTags: ['jazz', 'lounge'],
+        styleTags: ['brasserie', 'terrasse'],
+      ),
+      Place(
+        id: 'p89',
+        name: 'Holybelly',
+        type: PlaceType.restaurant,
+        latitude: 48.8674,
+        longitude: 2.3612,
+        address: '19 Rue Lucien Sampaix, 75010 Paris',
+        rating: 4.5,
+        reviewCount: 5600,
+        priceLevel: 2,
+        ambianceTags: ['décontracté', 'branché', 'familial'],
+        musicTags: ['pop', 'soul'],
+        styleTags: ['brunch', 'vegan'],
+      ),
+      Place(
+        id: 'p90',
+        name: 'Bouillon Pigalle',
+        type: PlaceType.restaurant,
+        latitude: 48.8824,
+        longitude: 2.3482,
+        address: '22 Boulevard de Clichy, 75018 Paris',
+        rating: 4.3,
+        reviewCount: 8900,
+        priceLevel: 1,
+        ambianceTags: ['animé', 'familial', 'décontracté'],
+        musicTags: ['pop', 'funk'],
+        styleTags: ['brasserie'],
+      ),
+      Place(
+        id: 'p91',
+        name: 'Mokonuts',
+        type: PlaceType.restaurant,
+        latitude: 48.8554,
+        longitude: 2.3784,
+        address: '5 Rue Saint-Bernard, 75011 Paris',
+        rating: 4.6,
+        reviewCount: 1800,
+        priceLevel: 2,
+        ambianceTags: ['cosy', 'décontracté', 'intimiste'],
+        musicTags: ['soul', 'pop'],
+        styleTags: ['brunch', 'vegan'],
+      ),
+      Place(
+        id: 'p92',
+        name: 'Chez L\'Ami Jean',
+        type: PlaceType.restaurant,
+        latitude: 48.8596,
+        longitude: 2.3078,
+        address: '27 Rue Malar, 75007 Paris',
+        rating: 4.5,
+        reviewCount: 3100,
+        priceLevel: 2,
+        ambianceTags: ['animé', 'décontracté', 'familial'],
+        musicTags: ['jazz', 'folk'],
+        styleTags: ['bistrot', 'gastronomique'],
+      ),
+      Place(
+        id: 'p93',
+        name: 'Le Baratin',
+        type: PlaceType.restaurant,
+        latitude: 48.8677,
+        longitude: 2.3965,
+        address: '3 Rue Jouye-Rouve, 75020 Paris',
+        rating: 4.4,
+        reviewCount: 1400,
+        priceLevel: 2,
+        ambianceTags: ['intimiste', 'décontracté', 'branché'],
+        musicTags: ['jazz', 'soul'],
+        styleTags: ['bistrot', 'vins nature'],
+      ),
+      Place(
+        id: 'p94',
+        name: 'Tomy & Co',
+        type: PlaceType.restaurant,
+        latitude: 48.8571,
+        longitude: 2.3071,
+        address: '22 Rue Surcouf, 75007 Paris',
+        rating: 4.6,
+        reviewCount: 1200,
+        priceLevel: 3,
+        ambianceTags: ['chic', 'intimiste', 'romantique'],
+        musicTags: ['jazz', 'lounge'],
+        styleTags: ['gastronomique'],
+        isPremium: true,
+      ),
+      Place(
+        id: 'p95',
+        name: 'Clown Bar',
+        type: PlaceType.restaurant,
+        latitude: 48.8622,
+        longitude: 2.3741,
+        address: '114 Rue Amelot, 75011 Paris',
+        rating: 4.5,
+        reviewCount: 2200,
+        priceLevel: 2,
+        ambianceTags: ['branché', 'animé', 'insolite'],
+        musicTags: ['jazz', 'afro'],
+        styleTags: ['bistrot', 'vins nature'],
+      ),
+      Place(
+        id: 'p96',
+        name: 'Le Servan',
+        type: PlaceType.restaurant,
+        latitude: 48.8584,
+        longitude: 2.3826,
+        address: '32 Rue Saint-Maur, 75011 Paris',
+        rating: 4.4,
+        reviewCount: 2600,
+        priceLevel: 2,
+        ambianceTags: ['branché', 'cosy', 'animé'],
+        musicTags: ['afro', 'soul'],
+        styleTags: ['gastronomique', 'vietnamien', 'thai'],
+      ),
+      Place(
+        id: 'p97',
+        name: 'Bouillon Chartier',
+        type: PlaceType.restaurant,
+        latitude: 48.8726,
+        longitude: 2.3443,
+        address: '7 Rue du Faubourg Montmartre, 75009 Paris',
+        rating: 4.1,
+        reviewCount: 22000,
+        priceLevel: 1,
+        ambianceTags: ['animé', 'familial', 'insolite'],
+        musicTags: ['jazz'],
+        styleTags: ['brasserie'],
+      ),
+      Place(
+        id: 'p98',
+        name: 'Pink Mamma',
+        type: PlaceType.restaurant,
+        latitude: 48.8822,
+        longitude: 2.3435,
+        address: '20ter Rue de Douai, 75009 Paris',
+        rating: 4.4,
+        reviewCount: 7800,
+        priceLevel: 2,
+        ambianceTags: ['branché', 'festif', 'romantique'],
+        musicTags: ['pop', 'afro'],
+        styleTags: ['italien', 'rooftop', 'terrasse'],
+        isPremium: true,
+      ),
+      Place(
+        id: 'p99',
+        name: 'East Mamma',
+        type: PlaceType.restaurant,
+        latitude: 48.8531,
+        longitude: 2.3766,
+        address: '133 Rue du Faubourg Saint-Antoine, 75011 Paris',
+        rating: 4.3,
+        reviewCount: 9200,
+        priceLevel: 2,
+        ambianceTags: ['animé', 'festif', 'branché'],
+        musicTags: ['pop', 'afro'],
+        styleTags: ['italien', 'pizza'],
+      ),
+      Place(
+        id: 'p100',
+        name: 'Cafe de la Paix',
+        type: PlaceType.restaurant,
+        latitude: 48.8712,
+        longitude: 2.3319,
+        address: '5 Place de l\'Opera, 75009 Paris',
+        rating: 4.3,
+        reviewCount: 6500,
+        priceLevel: 3,
+        ambianceTags: ['chic', 'romantique', 'business'],
+        musicTags: ['jazz', 'lounge'],
+        styleTags: ['brasserie', 'gastronomique', 'terrasse'],
+      ),
+      Place(
+        id: 'p101',
+        name: 'Sushi Yoshinori',
+        type: PlaceType.restaurant,
+        latitude: 48.8527,
+        longitude: 2.3312,
+        address: '18 Rue Gregoire de Tours, 75006 Paris',
+        rating: 4.7,
+        reviewCount: 900,
+        priceLevel: 3,
+        ambianceTags: ['chic', 'intimiste', 'romantique'],
+        musicTags: ['lounge'],
+        styleTags: ['japonais', 'gastronomique'],
+        isPremium: true,
+      ),
+      Place(
+        id: 'p102',
+        name: 'Les Enfants Rouges',
+        type: PlaceType.restaurant,
+        latitude: 48.8625,
+        longitude: 2.3607,
+        address: '39 Rue de Bretagne, 75003 Paris',
+        rating: 4.2,
+        reviewCount: 8300,
+        priceLevel: 2,
+        ambianceTags: ['animé', 'familial', 'décontracté'],
+        musicTags: ['pop', 'afro'],
+        styleTags: ['brunch', 'marché'],
+      ),
+      Place(
+        id: 'p103',
+        name: 'Le Grand Bain',
+        type: PlaceType.restaurant,
+        latitude: 48.8732,
+        longitude: 2.3850,
+        address: '14 Rue Denoyez, 75020 Paris',
+        rating: 4.5,
+        reviewCount: 1600,
+        priceLevel: 2,
+        ambianceTags: ['branché', 'décontracté', 'animé'],
+        musicTags: ['afro', 'funk'],
+        styleTags: ['vegan', 'gastronomique', 'vins nature'],
+      ),
+      Place(
+        id: 'p104',
+        name: 'Yard',
+        type: PlaceType.restaurant,
+        latitude: 48.8609,
+        longitude: 2.3742,
+        address: '6 Rue de Mont-Louis, 75011 Paris',
+        rating: 4.3,
+        reviewCount: 1900,
+        priceLevel: 2,
+        ambianceTags: ['branché', 'décontracté', 'cosy'],
+        musicTags: ['soul', 'pop'],
+        styleTags: ['brunch', 'vins nature', 'cocktails'],
+      ),
+
+      // ===================== BARS (suite 3) =====================
+      Place(
+        id: 'p105',
+        name: 'Little Red Door',
+        type: PlaceType.bar,
+        latitude: 48.8598,
+        longitude: 2.3566,
+        address: '60 Rue Charlot, 75003 Paris',
+        rating: 4.5,
+        reviewCount: 2400,
+        priceLevel: 3,
+        ambianceTags: ['chic', 'intimiste', 'branché'],
+        musicTags: ['house', 'lounge'],
+        styleTags: ['cocktails', 'speakeasy'],
+        isPremium: true,
+      ),
+      Place(
+        id: 'p106',
+        name: 'Mary Celeste',
+        type: PlaceType.bar,
+        latitude: 48.8597,
+        longitude: 2.3568,
+        address: '1 Rue Commines, 75003 Paris',
+        rating: 4.4,
+        reviewCount: 3100,
+        priceLevel: 2,
+        ambianceTags: ['animé', 'branché', 'décontracté'],
+        musicTags: ['afro', 'soul'],
+        styleTags: ['cocktails', 'fruits de mer'],
+      ),
+      Place(
+        id: 'p107',
+        name: 'Experimental Cocktail Club',
+        type: PlaceType.bar,
+        latitude: 48.8619,
+        longitude: 2.3441,
+        address: '60 Rue de la Monnaie, 75001 Paris',
+        rating: 4.5,
+        reviewCount: 4200,
+        priceLevel: 3,
+        ambianceTags: ['chic', 'intimiste', 'branché'],
+        musicTags: ['house', 'lounge'],
+        styleTags: ['cocktails', 'speakeasy'],
+        isPremium: true,
+      ),
+      Place(
+        id: 'p108',
+        name: 'Glass',
+        type: PlaceType.bar,
+        latitude: 48.8809,
+        longitude: 2.3414,
+        address: '7 Rue Frochot, 75009 Paris',
+        rating: 4.1,
+        reviewCount: 1800,
+        priceLevel: 2,
+        ambianceTags: ['festif', 'branché', 'animé'],
+        musicTags: ['rock', 'pop'],
+        styleTags: ['cocktails', 'club'],
+      ),
+      Place(
+        id: 'p109',
+        name: 'Lulu White',
+        type: PlaceType.bar,
+        latitude: 48.8809,
+        longitude: 2.3409,
+        address: '12 Rue Frochot, 75009 Paris',
+        rating: 4.4,
+        reviewCount: 2100,
+        priceLevel: 2,
+        ambianceTags: ['insolite', 'intimiste', 'branché'],
+        musicTags: ['jazz', 'lounge'],
+        styleTags: ['cocktails', 'speakeasy'],
+      ),
+      Place(
+        id: 'p110',
+        name: 'La Cave a Michel',
+        type: PlaceType.bar,
+        latitude: 48.8748,
+        longitude: 2.3618,
+        address: '36 Rue Sainte-Marthe, 75010 Paris',
+        rating: 4.5,
+        reviewCount: 1600,
+        priceLevel: 2,
+        ambianceTags: ['décontracté', 'cosy', 'animé'],
+        musicTags: ['jazz', 'afro'],
+        styleTags: ['vins nature', 'terrasse'],
+      ),
+      Place(
+        id: 'p111',
+        name: 'Sherry Butt',
+        type: PlaceType.bar,
+        latitude: 48.8538,
+        longitude: 2.3607,
+        address: '20 Rue Beautreillis, 75004 Paris',
+        rating: 4.4,
+        reviewCount: 2800,
+        priceLevel: 2,
+        ambianceTags: ['cosy', 'branché', 'intimiste'],
+        musicTags: ['jazz', 'soul'],
+        styleTags: ['cocktails'],
+      ),
+      Place(
+        id: 'p112',
+        name: 'Le Syndicat',
+        type: PlaceType.bar,
+        latitude: 48.8724,
+        longitude: 2.3580,
+        address: '51 Rue du Faubourg Saint-Denis, 75010 Paris',
+        rating: 4.5,
+        reviewCount: 2500,
+        priceLevel: 2,
+        ambianceTags: ['branché', 'animé', 'insolite'],
+        musicTags: ['house', 'techno'],
+        styleTags: ['cocktails', 'speakeasy'],
+        isPremium: true,
+      ),
+      Place(
+        id: 'p113',
+        name: 'Danico',
+        type: PlaceType.bar,
+        latitude: 48.8645,
+        longitude: 2.3456,
+        address: '6 Rue Vivienne, 75002 Paris',
+        rating: 4.5,
+        reviewCount: 1900,
+        priceLevel: 3,
+        ambianceTags: ['chic', 'intimiste', 'branché'],
+        musicTags: ['house', 'lounge'],
+        styleTags: ['cocktails', 'speakeasy'],
+      ),
+      Place(
+        id: 'p114',
+        name: 'Au Sauvignon',
+        type: PlaceType.bar,
+        latitude: 48.8560,
+        longitude: 2.3320,
+        address: '80 Rue des Saints-Peres, 75007 Paris',
+        rating: 4.2,
+        reviewCount: 3400,
+        priceLevel: 2,
+        ambianceTags: ['cosy', 'décontracté', 'intimiste'],
+        musicTags: ['jazz'],
+        styleTags: ['vins nature', 'terrasse'],
+      ),
+      Place(
+        id: 'p115',
+        name: 'Brasserie Barbes',
+        type: PlaceType.bar,
+        latitude: 48.8827,
+        longitude: 2.3482,
+        address: '2 Boulevard Barbes, 75018 Paris',
+        rating: 4.0,
+        reviewCount: 5200,
+        priceLevel: 2,
+        ambianceTags: ['animé', 'décontracté', 'festif'],
+        musicTags: ['afro', 'pop'],
+        styleTags: ['terrasse', 'bière artisanale'],
+      ),
+      Place(
+        id: 'p116',
+        name: 'Ballroom du Beef Club',
+        type: PlaceType.bar,
+        latitude: 48.8624,
+        longitude: 2.3477,
+        address: '58 Rue Jean-Jacques Rousseau, 75001 Paris',
+        rating: 4.3,
+        reviewCount: 2600,
+        priceLevel: 3,
+        ambianceTags: ['festif', 'branché', 'insolite'],
+        musicTags: ['house', 'techno'],
+        styleTags: ['cocktails', 'speakeasy', 'club'],
+      ),
+      Place(
+        id: 'p117',
+        name: 'Gravity Bar',
+        type: PlaceType.bar,
+        latitude: 48.8751,
+        longitude: 2.3578,
+        address: '44 Rue des Vinaigriers, 75010 Paris',
+        rating: 4.3,
+        reviewCount: 1400,
+        priceLevel: 2,
+        ambianceTags: ['décontracté', 'branché', 'animé'],
+        musicTags: ['funk', 'soul'],
+        styleTags: ['bière artisanale'],
+      ),
+
+      // ===================== HOTELS (suite 3) =====================
+      Place(
+        id: 'p118',
+        name: 'Le Grand Mazarin',
+        type: PlaceType.hotel,
+        latitude: 48.8577,
+        longitude: 2.3545,
+        address: '6 Rue des Archives, 75004 Paris',
+        rating: 4.5,
+        reviewCount: 1800,
+        priceLevel: 3,
+        ambianceTags: ['chic', 'romantique', 'cosy'],
+        musicTags: ['lounge', 'jazz'],
+        styleTags: ['boutique-hôtel', 'design'],
+      ),
+      Place(
+        id: 'p119',
+        name: 'Hotel du Petit Moulin',
+        type: PlaceType.hotel,
+        latitude: 48.8605,
+        longitude: 2.3596,
+        address: '29 Rue du Poitou, 75003 Paris',
+        rating: 4.4,
+        reviewCount: 2100,
+        priceLevel: 3,
+        ambianceTags: ['branché', 'romantique', 'insolite'],
+        musicTags: ['lounge'],
+        styleTags: ['boutique-hôtel', 'design'],
+        isPremium: true,
+      ),
+      Place(
+        id: 'p120',
+        name: 'Mama Shelter Paris East',
+        type: PlaceType.hotel,
+        latitude: 48.8699,
+        longitude: 2.4038,
+        address: '109 Rue de Bagnolet, 75020 Paris',
+        rating: 4.2,
+        reviewCount: 3800,
+        priceLevel: 2,
+        ambianceTags: ['festif', 'branché', 'décontracté'],
+        musicTags: ['house', 'pop', 'afro'],
+        styleTags: ['design', 'rooftop'],
+      ),
+      Place(
+        id: 'p121',
+        name: 'Hotel de Nell',
+        type: PlaceType.hotel,
+        latitude: 48.8756,
+        longitude: 2.3463,
+        address: '7-9 Rue du Conservatoire, 75009 Paris',
+        rating: 4.5,
+        reviewCount: 1600,
+        priceLevel: 3,
+        ambianceTags: ['cosy', 'romantique', 'chic'],
+        musicTags: ['jazz', 'lounge'],
+        styleTags: ['boutique-hôtel', 'design'],
+      ),
+      Place(
+        id: 'p122',
+        name: 'Hotel des Grands Boulevards',
+        type: PlaceType.hotel,
+        latitude: 48.8703,
+        longitude: 2.3481,
+        address: '17 Boulevard Poissonniere, 75002 Paris',
+        rating: 4.5,
+        reviewCount: 4200,
+        priceLevel: 3,
+        ambianceTags: ['branché', 'chic', 'romantique'],
+        musicTags: ['house', 'lounge'],
+        styleTags: ['boutique-hôtel', 'jardin', 'terrasse'],
+        isPremium: true,
+      ),
+      Place(
+        id: 'p123',
+        name: 'Off Paris Seine',
+        type: PlaceType.hotel,
+        latitude: 48.8383,
+        longitude: 2.3670,
+        address: 'Port de la Gare, 75013 Paris',
+        rating: 4.3,
+        reviewCount: 2200,
+        priceLevel: 3,
+        ambianceTags: ['insolite', 'romantique', 'décontracté'],
+        musicTags: ['lounge', 'afro'],
+        styleTags: ['péniche', 'design'],
+      ),
+      Place(
+        id: 'p124',
+        name: 'Hotel Drouot',
+        type: PlaceType.hotel,
+        latitude: 48.8756,
+        longitude: 2.3422,
+        address: '6 Rue Drouot, 75009 Paris',
+        rating: 4.3,
+        reviewCount: 1400,
+        priceLevel: 2,
+        ambianceTags: ['cosy', 'branché', 'décontracté'],
+        musicTags: ['lounge'],
+        styleTags: ['boutique-hôtel', 'design'],
+      ),
+      Place(
+        id: 'p125',
+        name: 'Hotel La Louisiane',
+        type: PlaceType.hotel,
+        latitude: 48.8538,
+        longitude: 2.3355,
+        address: '60 Rue de Seine, 75006 Paris',
+        rating: 4.1,
+        reviewCount: 2800,
+        priceLevel: 2,
+        ambianceTags: ['cosy', 'romantique', 'décontracté'],
+        musicTags: ['jazz'],
+        styleTags: ['bistrot', 'boutique-hôtel'],
+      ),
+
+      // ===================== ROOFTOPS =====================
+      Place(
+        id: 'p126',
+        name: 'Le Perchoir Menilmontant',
+        type: PlaceType.rooftop,
+        latitude: 48.8647,
+        longitude: 2.3882,
+        address: '14 Rue Crespin du Gast, 75011 Paris',
+        rating: 4.5,
+        reviewCount: 8400,
+        priceLevel: 2,
+        ambianceTags: ['branché', 'festif', 'animé'],
+        musicTags: ['house', 'afro'],
+        styleTags: ['rooftop', 'cocktails', 'vue panoramique'],
+        isPremium: true,
+      ),
+      Place(
+        id: 'p127',
+        name: 'Le Perchoir Marais',
+        type: PlaceType.rooftop,
+        latitude: 48.8572,
+        longitude: 2.3519,
+        address: '33 Rue de la Verrerie, 75004 Paris',
+        rating: 4.4,
+        reviewCount: 6200,
+        priceLevel: 2,
+        ambianceTags: ['branché', 'animé', 'festif'],
+        musicTags: ['house', 'lounge'],
+        styleTags: ['rooftop', 'cocktails', 'vue panoramique'],
+        isPremium: true,
+      ),
+      Place(
+        id: 'p128',
+        name: 'Galeries Lafayette Rooftop',
+        type: PlaceType.rooftop,
+        latitude: 48.8741,
+        longitude: 2.3319,
+        address: '40 Boulevard Haussmann, 75009 Paris',
+        rating: 4.4,
+        reviewCount: 25000,
+        priceLevel: 1,
+        ambianceTags: ['animé', 'familial', 'décontracté'],
+        musicTags: [],
+        styleTags: ['rooftop', 'vue panoramique', 'vue Tour Eiffel', 'gratuit'],
+      ),
+      Place(
+        id: 'p129',
+        name: 'Terrass Hotel Rooftop',
+        type: PlaceType.rooftop,
+        latitude: 48.8847,
+        longitude: 2.3316,
+        address: '12 Rue Joseph de Maistre, 75018 Paris',
+        rating: 4.5,
+        reviewCount: 3200,
+        priceLevel: 2,
+        ambianceTags: ['chic', 'romantique', 'branché'],
+        musicTags: ['lounge', 'house'],
+        styleTags: ['rooftop', 'vue panoramique', 'cocktails', 'terrasse'],
+        isPremium: true,
+      ),
+      Place(
+        id: 'p130',
+        name: 'Maison Blanche',
+        type: PlaceType.rooftop,
+        latitude: 48.8735,
+        longitude: 2.3025,
+        address: '15 Avenue Montaigne, 75008 Paris',
+        rating: 4.3,
+        reviewCount: 1800,
+        priceLevel: 3,
+        ambianceTags: ['chic', 'romantique', 'business'],
+        musicTags: ['lounge', 'house'],
+        styleTags: ['rooftop', 'vue panoramique', 'gastronomique'],
+      ),
+      Place(
+        id: 'p131',
+        name: 'L\'Oiseau Blanc - Peninsula',
+        type: PlaceType.rooftop,
+        latitude: 48.8686,
+        longitude: 2.2964,
+        address: '19 Avenue Kleber, 75016 Paris',
+        rating: 4.7,
+        reviewCount: 2400,
+        priceLevel: 4,
+        ambianceTags: ['chic', 'romantique', 'business'],
+        musicTags: ['lounge'],
+        styleTags: ['rooftop', 'vue Tour Eiffel', 'gastronomique', 'palace'],
+        isPremium: true,
+      ),
+      Place(
+        id: 'p132',
+        name: 'Ciel de Paris - Tour Montparnasse',
+        type: PlaceType.rooftop,
+        latitude: 48.8419,
+        longitude: 2.3219,
+        address: '33 Avenue du Maine, 75015 Paris',
+        rating: 4.2,
+        reviewCount: 9600,
+        priceLevel: 3,
+        ambianceTags: ['chic', 'romantique', 'animé'],
+        musicTags: ['lounge'],
+        styleTags: ['rooftop', 'vue panoramique', 'gastronomique'],
+      ),
+      Place(
+        id: 'p133',
+        name: 'Rooftop du Printemps Haussmann',
+        type: PlaceType.rooftop,
+        latitude: 48.8738,
+        longitude: 2.3316,
+        address: '64 Boulevard Haussmann, 75009 Paris',
+        rating: 4.3,
+        reviewCount: 18000,
+        priceLevel: 1,
+        ambianceTags: ['animé', 'décontracté', 'familial'],
+        musicTags: [],
+        styleTags: ['rooftop', 'vue panoramique', 'vue Tour Eiffel', 'gratuit'],
+      ),
+      Place(
+        id: 'p134',
+        name: 'La Samaritaine Rooftop',
+        type: PlaceType.rooftop,
+        latitude: 48.8607,
+        longitude: 2.3452,
+        address: '9 Rue de la Monnaie, 75001 Paris',
+        rating: 4.4,
+        reviewCount: 2100,
+        priceLevel: 3,
+        ambianceTags: ['chic', 'branché', 'romantique'],
+        musicTags: ['lounge', 'house'],
+        styleTags: ['rooftop', 'vue panoramique', 'cocktails'],
+        isPremium: true,
+      ),
+
+      // ===================== PARCS =====================
+      Place(
+        id: 'p135',
+        name: 'Jardin du Luxembourg',
+        type: PlaceType.parc,
+        latitude: 48.8462,
+        longitude: 2.3372,
+        address: 'Rue de Medicis, 75006 Paris',
+        rating: 4.8,
+        reviewCount: 45000,
+        priceLevel: 1,
+        ambianceTags: ['calme', 'romantique', 'familial'],
+        musicTags: [],
+        styleTags: ['jardin', 'pelouse', 'pique-nique', 'gratuit'],
+      ),
+      Place(
+        id: 'p136',
+        name: 'Parc des Buttes-Chaumont',
+        type: PlaceType.parc,
+        latitude: 48.8798,
+        longitude: 2.3816,
+        address: '1 Rue Botzaris, 75019 Paris',
+        rating: 4.7,
+        reviewCount: 38000,
+        priceLevel: 1,
+        ambianceTags: ['calme', 'romantique', 'familial'],
+        musicTags: [],
+        styleTags: ['nature', 'pelouse', 'pique-nique', 'vue panoramique', 'gratuit'],
+        isPremium: true,
+      ),
+      Place(
+        id: 'p137',
+        name: 'Jardin des Tuileries',
+        type: PlaceType.parc,
+        latitude: 48.8638,
+        longitude: 2.3274,
+        address: 'Place de la Concorde, 75001 Paris',
+        rating: 4.5,
+        reviewCount: 52000,
+        priceLevel: 1,
+        ambianceTags: ['animé', 'romantique', 'familial'],
+        musicTags: [],
+        styleTags: ['jardin', 'pelouse', 'pique-nique', 'vue Tour Eiffel', 'gratuit'],
+      ),
+      Place(
+        id: 'p138',
+        name: 'Parc de Belleville',
+        type: PlaceType.parc,
+        latitude: 48.8690,
+        longitude: 2.3877,
+        address: '47 Rue des Couronnes, 75020 Paris',
+        rating: 4.5,
+        reviewCount: 12000,
+        priceLevel: 1,
+        ambianceTags: ['décontracté', 'familial', 'animé'],
+        musicTags: [],
+        styleTags: ['vue panoramique', 'pelouse', 'pique-nique', 'gratuit'],
+      ),
+      Place(
+        id: 'p139',
+        name: 'Promenade Plantee',
+        type: PlaceType.parc,
+        latitude: 48.8476,
+        longitude: 2.3712,
+        address: '1 Coulee Verte Rene-Dumont, 75012 Paris',
+        rating: 4.5,
+        reviewCount: 8500,
+        priceLevel: 1,
+        ambianceTags: ['calme', 'romantique', 'insolite'],
+        musicTags: [],
+        styleTags: ['nature', 'jardin', 'pique-nique', 'gratuit', 'instagrammable'],
+      ),
+      Place(
+        id: 'p140',
+        name: 'Parc Monceau',
+        type: PlaceType.parc,
+        latitude: 48.8797,
+        longitude: 2.3096,
+        address: '35 Boulevard de Courcelles, 75008 Paris',
+        rating: 4.6,
+        reviewCount: 22000,
+        priceLevel: 1,
+        ambianceTags: ['calme', 'chic', 'romantique'],
+        musicTags: [],
+        styleTags: ['jardin', 'pelouse', 'pique-nique', 'gratuit'],
+      ),
+      Place(
+        id: 'p141',
+        name: 'Jardin des Plantes',
+        type: PlaceType.parc,
+        latitude: 48.8447,
+        longitude: 2.3598,
+        address: '57 Rue Cuvier, 75005 Paris',
+        rating: 4.4,
+        reviewCount: 18000,
+        priceLevel: 2,
+        ambianceTags: ['calme', 'familial', 'décontracté'],
+        musicTags: [],
+        styleTags: ['nature', 'jardin', 'pique-nique'],
+      ),
+      Place(
+        id: 'p142',
+        name: 'Parc de la Villette',
+        type: PlaceType.parc,
+        latitude: 48.8940,
+        longitude: 2.3933,
+        address: '211 Avenue Jean Jaures, 75019 Paris',
+        rating: 4.5,
+        reviewCount: 35000,
+        priceLevel: 1,
+        ambianceTags: ['animé', 'familial', 'décontracté'],
+        musicTags: [],
+        styleTags: ['nature', 'pelouse', 'pique-nique', 'gratuit'],
+      ),
+      Place(
+        id: 'p143',
+        name: 'Square des Batignolles',
+        type: PlaceType.parc,
+        latitude: 48.8863,
+        longitude: 2.3189,
+        address: 'Rue Cardinet, 75017 Paris',
+        rating: 4.3,
+        reviewCount: 4500,
+        priceLevel: 1,
+        ambianceTags: ['calme', 'familial', 'décontracté'],
+        musicTags: [],
+        styleTags: ['nature', 'pelouse', 'pique-nique', 'gratuit'],
+      ),
+      Place(
+        id: 'p144',
+        name: 'Bois de Vincennes',
+        type: PlaceType.parc,
+        latitude: 48.8344,
+        longitude: 2.4339,
+        address: 'Route de la Pyramide, 75012 Paris',
+        rating: 4.5,
+        reviewCount: 28000,
+        priceLevel: 1,
+        ambianceTags: ['calme', 'familial', 'décontracté'],
+        musicTags: [],
+        styleTags: ['nature', 'pelouse', 'pique-nique', 'gratuit'],
+      ),
+
+      // ===================== ADRESSES & SPOTS PHOTO =====================
+      Place(
+        id: 'p145',
+        name: 'Rue de Cremieux',
+        type: PlaceType.adresse,
+        latitude: 48.8474,
+        longitude: 2.3688,
+        address: 'Rue de Cremieux, 75012 Paris',
+        rating: 4.6,
+        reviewCount: 15000,
+        priceLevel: 1,
+        ambianceTags: ['insolite', 'romantique', 'animé'],
+        musicTags: [],
+        styleTags: ['instagrammable', 'gratuit'],
+      ),
+      Place(
+        id: 'p146',
+        name: 'Rue Montorgueil',
+        type: PlaceType.adresse,
+        latitude: 48.8633,
+        longitude: 2.3474,
+        address: 'Rue Montorgueil, 75002 Paris',
+        rating: 4.5,
+        reviewCount: 35000,
+        priceLevel: 1,
+        ambianceTags: ['animé', 'familial', 'décontracté'],
+        musicTags: [],
+        styleTags: ['marché', 'gratuit', 'instagrammable'],
+      ),
+      Place(
+        id: 'p147',
+        name: 'Passage des Panoramas',
+        type: PlaceType.adresse,
+        latitude: 48.8706,
+        longitude: 2.3447,
+        address: '11 Boulevard Montmartre, 75002 Paris',
+        rating: 4.5,
+        reviewCount: 12000,
+        priceLevel: 1,
+        ambianceTags: ['insolite', 'romantique', 'cosy'],
+        musicTags: [],
+        styleTags: ['galerie couverte', 'instagrammable', 'gratuit'],
+      ),
+      Place(
+        id: 'p148',
+        name: 'Rue Denoyez',
+        type: PlaceType.adresse,
+        latitude: 48.8732,
+        longitude: 2.3850,
+        address: 'Rue Denoyez, 75020 Paris',
+        rating: 4.3,
+        reviewCount: 8000,
+        priceLevel: 1,
+        ambianceTags: ['insolite', 'branché', 'décontracté'],
+        musicTags: [],
+        styleTags: ['street art', 'instagrammable', 'gratuit'],
+      ),
+      Place(
+        id: 'p149',
+        name: 'Passage Jouffroy',
+        type: PlaceType.adresse,
+        latitude: 48.8727,
+        longitude: 2.3461,
+        address: '10 Boulevard Montmartre, 75009 Paris',
+        rating: 4.5,
+        reviewCount: 8500,
+        priceLevel: 1,
+        ambianceTags: ['insolite', 'cosy', 'romantique'],
+        musicTags: [],
+        styleTags: ['galerie couverte', 'instagrammable', 'gratuit'],
+      ),
+      Place(
+        id: 'p150',
+        name: 'Marche d\'Aligre',
+        type: PlaceType.adresse,
+        latitude: 48.8497,
+        longitude: 2.3740,
+        address: 'Place d\'Aligre, 75012 Paris',
+        rating: 4.6,
+        reviewCount: 18000,
+        priceLevel: 1,
+        ambianceTags: ['animé', 'familial', 'décontracté'],
+        musicTags: [],
+        styleTags: ['marché', 'gratuit'],
+      ),
+      Place(
+        id: 'p151',
+        name: 'Rue des Martyrs',
+        type: PlaceType.adresse,
+        latitude: 48.8793,
+        longitude: 2.3404,
+        address: 'Rue des Martyrs, 75009 Paris',
+        rating: 4.4,
+        reviewCount: 22000,
+        priceLevel: 1,
+        ambianceTags: ['animé', 'décontracté', 'familial'],
+        musicTags: [],
+        styleTags: ['marché', 'gastronomique', 'gratuit'],
+      ),
+      Place(
+        id: 'p152',
+        name: 'Galerie Vivienne',
+        type: PlaceType.adresse,
+        latitude: 48.8648,
+        longitude: 2.3381,
+        address: '4 Rue des Petits Champs, 75002 Paris',
+        rating: 4.6,
+        reviewCount: 10000,
+        priceLevel: 1,
+        ambianceTags: ['chic', 'romantique', 'insolite'],
+        musicTags: [],
+        styleTags: ['galerie couverte', 'instagrammable', 'gratuit'],
+      ),
+      Place(
+        id: 'p153',
+        name: 'Canal Saint-Martin',
+        type: PlaceType.adresse,
+        latitude: 48.8720,
+        longitude: 2.3635,
+        address: 'Quai de Valmy, 75010 Paris',
+        rating: 4.6,
+        reviewCount: 32000,
+        priceLevel: 1,
+        ambianceTags: ['romantique', 'décontracté', 'animé'],
+        musicTags: [],
+        styleTags: ['instagrammable', 'pique-nique', 'gratuit'],
+      ),
     ].map(_withMockMedia).toList();
   }
 
@@ -1375,11 +2687,7 @@ class MockDataService {
       ambianceTags: ambiance,
       musicTags: p.musicTags,
       styleTags: style,
-      photos: [
-        _photo('${p.id}a'),
-        _photo('${p.id}b'),
-        _photo('${p.id}c'),
-      ],
+      photos: _photosForPlace(p.id),
       videos: const [],
       isPremium: p.isPremium,
       averagePrice: _averagePrice(p),
@@ -1388,16 +2696,12 @@ class MockDataService {
       mapsUrl: mapsUrl,
       instagramUrl: instagramUrl,
       // websiteUrl laisse a null : on ne fabrique pas de faux site.
-      // Extraits "Instagram" (placeholders de demo en attendant l'integration
-      // reelle des Reels via l'API/embed Instagram).
-      instagramVideos: [
-        p.id.hashCode.isEven ? _sampleVideoA : _sampleVideoB,
-      ],
-      // Nos interviews maison : vides pour l'instant (tournage a venir).
-      originalVideos: const [],
-      // Avis : volontairement vides. On NE genere PAS de faux avis ;
-      // la fiche renvoie vers les avis Google reels (voir mapsUrl).
-      reviews: const [],
+      // Extraits "Instagram" : utilise _igVideos[id] si rempli, sinon demo.
+      instagramVideos: _igVideosForPlace(p.id),
+      // Nos interviews maison : rempli via _originalVideosMap si disponible.
+      originalVideos: _originalVideosForPlace(p.id),
+      // Extraits d'avis de demo pour les premiers lieux ; vide sinon.
+      reviews: _reviewSamples[p.id] ?? const [],
     );
   }
 
@@ -1406,12 +2710,19 @@ class MockDataService {
     const barTiers = [15, 25, 45, 70];
     const restoTiers = [20, 35, 60, 110];
     const hotelTiers = [90, 150, 250, 430];
+    const rooftopTiers = [15, 25, 45, 70];
+    const parcTiers = [0, 5, 12, 20];
+    const adresseTiers = [0, 0, 0, 0];
     final tiers = switch (p.type) {
       PlaceType.bar => barTiers,
       PlaceType.restaurant => restoTiers,
       PlaceType.hotel => hotelTiers,
+      PlaceType.rooftop => rooftopTiers,
+      PlaceType.parc => parcTiers,
+      PlaceType.adresse => adresseTiers,
     };
     final base = tiers[(p.priceLevel - 1).clamp(0, 3)];
+    if (base == 0) return 0;
     final jitter = p.id.hashCode.abs() % 11; // 0..10
     return base + jitter;
   }
@@ -1447,6 +2758,15 @@ class MockDataService {
         a.contains('chic')) {
       s.addAll(['after-work', '30-45 ans']);
     }
+    // Parcs et adresses : toujours familles + locaux par défaut.
+    if (p.type == PlaceType.parc || p.type == PlaceType.adresse) {
+      s.add('familles');
+      if (p.rating >= 4.5 ||
+          p.styleTags.contains('vue Tour Eiffel') ||
+          p.styleTags.contains('instagrammable')) {
+        s.add('touristes');
+      }
+    }
     if (s.isEmpty) s.add('locaux');
     return s.toList();
   }
@@ -1467,6 +2787,17 @@ class MockDataService {
         break;
       case PlaceType.hotel:
         s.addAll(['soir', 'nuit', 'week-end']);
+        break;
+      case PlaceType.rooftop:
+        s.addAll(['after-work', 'soir', 'week-end']);
+        if (p.ambianceTags.contains('festif')) s.add('nuit');
+        break;
+      case PlaceType.parc:
+        s.addAll(['matin', 'après-midi', 'week-end']);
+        if (p.ambianceTags.contains('animé')) s.add('soir');
+        break;
+      case PlaceType.adresse:
+        s.addAll(['matin', 'après-midi', 'week-end']);
         break;
     }
     if (p.styleTags.contains('terrasse') || p.styleTags.contains('jardin')) {

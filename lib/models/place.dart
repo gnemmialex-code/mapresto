@@ -41,7 +41,7 @@ class Review {
 }
 
 /// Type de lieu affiche sur la carte.
-enum PlaceType { bar, restaurant, hotel }
+enum PlaceType { bar, restaurant, hotel, rooftop, parc, adresse }
 
 extension PlaceTypeX on PlaceType {
   String get label {
@@ -52,6 +52,12 @@ extension PlaceTypeX on PlaceType {
         return 'Restaurant';
       case PlaceType.hotel:
         return 'Hotel';
+      case PlaceType.rooftop:
+        return 'Rooftop';
+      case PlaceType.parc:
+        return 'Parc';
+      case PlaceType.adresse:
+        return 'Adresse';
     }
   }
 
@@ -96,6 +102,13 @@ class Place {
   /// Creneaux d'affluence reels (ex: "after-work", "soir", "nuit", "week-end").
   final List<String> peakTags;
 
+  /// Type de cuisine (ex: "bistrot", "japonais", "gastronomique").
+  /// Separe de styleTags pour un filtrage plus precis.
+  final List<String> cuisineTags;
+
+  /// Horaires d'ouverture (ex: "Midi + Soir", "Soir + Nuit", "Toute la journée").
+  final List<String> openingHours;
+
   // ---- Liens externes ----
   final String? mapsUrl; // fiche Google Maps (avis reels, itineraire)
   final String? instagramUrl; // compte / hashtag Instagram
@@ -130,6 +143,8 @@ class Place {
     this.averagePrice = 0,
     this.crowdTags = const [],
     this.peakTags = const [],
+    this.cuisineTags = const [],
+    this.openingHours = const [],
     this.mapsUrl,
     this.instagramUrl,
     this.websiteUrl,
@@ -142,10 +157,21 @@ class Place {
   String get priceLabel => '€' * priceLevel.clamp(1, 4);
 
   /// Unite de prix selon le type de lieu.
-  String get priceUnit => type == PlaceType.hotel ? '/ nuit' : '/ pers';
+  String get priceUnit {
+    switch (type) {
+      case PlaceType.hotel:
+        return '/ nuit';
+      case PlaceType.parc:
+      case PlaceType.adresse:
+        return '/ entrée';
+      default:
+        return '/ pers';
+    }
+  }
 
-  /// Libelle du prix reel (ex: "≈ 35 € / pers").
-  String get averagePriceLabel => '≈ $averagePrice € $priceUnit';
+  /// Libelle du prix reel (ex: "≈ 35 € / pers" ou "Gratuit").
+  String get averagePriceLabel =>
+      averagePrice == 0 ? 'Gratuit' : '≈ $averagePrice € $priceUnit';
 
   /// Lien d'itineraire Google Maps vers ce lieu.
   /// L'origine est omise : Google Maps utilise automatiquement la position
@@ -178,6 +204,8 @@ class Place {
       averagePrice: json['averagePrice'] as int? ?? 0,
       crowdTags: List<String>.from(json['crowdTags'] ?? const []),
       peakTags: List<String>.from(json['peakTags'] ?? const []),
+      cuisineTags: List<String>.from(json['cuisineTags'] ?? const []),
+      openingHours: List<String>.from(json['openingHours'] ?? const []),
       mapsUrl: json['mapsUrl'] as String?,
       instagramUrl: json['instagramUrl'] as String?,
       websiteUrl: json['websiteUrl'] as String?,
@@ -208,6 +236,8 @@ class Place {
         'averagePrice': averagePrice,
         'crowdTags': crowdTags,
         'peakTags': peakTags,
+        'cuisineTags': cuisineTags,
+        'openingHours': openingHours,
         'mapsUrl': mapsUrl,
         'instagramUrl': instagramUrl,
         'websiteUrl': websiteUrl,

@@ -134,17 +134,19 @@ class _SuggestPlaceScreenState extends State<SuggestPlaceScreen> {
 
             _label('Type de lieu'),
             const SizedBox(height: 8),
-            SegmentedButton<PlaceType>(
-              segments: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
                 for (final t in PlaceType.values)
-                  ButtonSegment(
-                    value: t,
+                  ChoiceChip(
+                    avatar: Icon(PlaceVisuals.icon(t), size: 16),
                     label: Text(t.label),
-                    icon: Icon(PlaceVisuals.icon(t)),
+                    selected: _type == t,
+                    onSelected: (_) => setState(() => _type = t),
+                    showCheckmark: false,
                   ),
               ],
-              selected: {_type},
-              onSelectionChanged: (s) => setState(() => _type = s.first),
             ),
             const SizedBox(height: 16),
 

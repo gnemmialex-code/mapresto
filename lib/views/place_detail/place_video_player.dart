@@ -33,16 +33,19 @@ class _PlaceVideoPlayerState extends State<PlaceVideoPlayer> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
-      ..initialize().then((_) {
-        if (!mounted) return;
-        setState(() => _ready = true);
-        _controller
-          ..setLooping(true)
-          ..play();
-      }).catchError((_) {
-        if (mounted) setState(() => _error = true);
-      });
+    final isAsset = widget.url.startsWith('assets/');
+    _controller = isAsset
+        ? VideoPlayerController.asset(widget.url)
+        : VideoPlayerController.networkUrl(Uri.parse(widget.url));
+    _controller.initialize().then((_) {
+      if (!mounted) return;
+      setState(() => _ready = true);
+      _controller
+        ..setLooping(true)
+        ..play();
+    }).catchError((_) {
+      if (mounted) setState(() => _error = true);
+    });
   }
 
   @override

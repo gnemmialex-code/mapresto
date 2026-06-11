@@ -23,6 +23,9 @@ class AppColors {
   static const Color bar = Color(0xFF8C7CFF);
   static const Color restaurant = Color(0xFFE17055);
   static const Color hotel = Color(0xFF4BA3F0);
+  static const Color rooftop = Color(0xFFFD9644);
+  static const Color parc = Color(0xFF26C281);
+  static const Color adresse = Color(0xFFE84393);
 
   static const Color rating = Color(0xFFF1C40F);
 

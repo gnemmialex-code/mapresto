@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -7,7 +6,9 @@ import '../../models/place.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/place_visuals.dart';
+import '../../viewmodels/user_reviews_view_model.dart';
 import '../../viewmodels/user_tags_view_model.dart';
+import '../../widgets/place_photo.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/tag_chip.dart';
 import 'place_video_player.dart';
@@ -276,6 +277,10 @@ class PlaceDetailContent extends StatelessWidget {
             ),
           const SizedBox(height: 24),
 
+          // ---- Avis de la communaute ----
+          _UserReviewSection(place: place),
+          const SizedBox(height: 20),
+
           // ---- Action collection ----
           PrimaryButton(
             label: 'Ajouter a ma collection',
@@ -294,24 +299,52 @@ class PlaceDetailContent extends StatelessWidget {
   }
 }
 
-class _PhotoCarousel extends StatelessWidget {
+class _PhotoCarousel extends StatefulWidget {
   const _PhotoCarousel({required this.photos, required this.color});
   final List<String> photos;
   final Color color;
 
   @override
+  State<_PhotoCarousel> createState() => _PhotoCarouselState();
+}
+
+class _PhotoCarouselState extends State<_PhotoCarousel> {
+  int _page = 0;
+
+  @override
   Widget build(BuildContext context) {
-    if (photos.isEmpty) {
-      return Container(color: color);
-    }
-    return PageView(
+    if (widget.photos.isEmpty) return Container(color: widget.color);
+    return Stack(
       children: [
-        for (final url in photos)
-          CachedNetworkImage(
-            imageUrl: url,
-            fit: BoxFit.cover,
-            placeholder: (_, _) => Container(color: AppColors.background),
-            errorWidget: (_, _, _) => Container(color: color),
+        PageView(
+          onPageChanged: (i) => setState(() => _page = i),
+          children: [
+            for (final path in widget.photos)
+              PlacePhoto(path: path, fallbackColor: widget.color),
+          ],
+        ),
+        if (widget.photos.length > 1)
+          Positioned(
+            bottom: 10,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (var i = 0; i < widget.photos.length; i++)
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: _page == i ? 16 : 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: Colors.white
+                          .withValues(alpha: _page == i ? 0.95 : 0.5),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+              ],
+            ),
           ),
       ],
     );
@@ -478,64 +511,108 @@ class _LinkChip extends StatelessWidget {
   }
 }
 
-/// Section avis : note agregee + acces aux avis REELS Google.
-/// Si `place.reviews` est rempli (API branchee), on les liste ; sinon on
-/// renvoie vers Google Maps (on n'invente pas d'avis).
-class _ReviewsSection extends StatelessWidget {
+/// Section avis Google : jusqu'a 10 avis avec "Voir plus" si > 3.
+/// Si `place.reviews` est vide, renvoie vers Google Maps (pas d'avis inventes).
+class _ReviewsSection extends StatefulWidget {
   const _ReviewsSection({required this.place});
   final Place place;
 
   @override
+  State<_ReviewsSection> createState() => _ReviewsSectionState();
+}
+
+class _ReviewsSectionState extends State<_ReviewsSection> {
+  static const _initialMax = 3;
+  static const _hardMax = 10;
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final all = widget.place.reviews.take(_hardMax).toList();
+    final shown = _expanded ? all : all.take(_initialMax).toList();
+    final remaining = all.length - _initialMax;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            _SectionTitle('Avis'),
+            _SectionTitle('Avis Google'),
             const Spacer(),
             const Icon(Icons.star, color: AppColors.rating, size: 18),
             const SizedBox(width: 4),
-            Text('${place.rating}', style: AppTypography.subtitle),
-            Text(' · ${place.reviewCount} avis', style: AppTypography.caption),
+            Text('${widget.place.rating}', style: AppTypography.subtitle),
+            Text(' · ${widget.place.reviewCount} avis',
+                style: AppTypography.caption),
           ],
         ),
         const SizedBox(height: 8),
-        if (place.reviews.isEmpty) ...[
-          // Pas d'avis fabriques : on pointe vers les avis Google reels.
+        if (all.isEmpty) ...[
           Text(
             'Avis verifies via Google. Consultez-les directement a la source.',
             style: AppTypography.caption,
           ),
           const SizedBox(height: 8),
-          if (place.mapsUrl != null)
+          if (widget.place.mapsUrl != null)
             OutlinedButton.icon(
-              onPressed: () => _launchUrl(place.mapsUrl!),
+              onPressed: () => _launchUrl(widget.place.mapsUrl!),
               icon: const Icon(Icons.reviews_outlined, size: 18),
               label: const Text('Voir les vrais avis (Google)'),
             ),
-        ] else
-          for (final r in place.reviews)
+        ] else ...[
+          for (final r in shown)
             Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
+                      Icon(Icons.person_outline,
+                          size: 16, color: AppColors.textSecondary),
+                      const SizedBox(width: 4),
                       Text(r.author, style: AppTypography.subtitle),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.star, color: AppColors.rating, size: 14),
-                      Text(' ${r.rating}', style: AppTypography.caption),
                       const Spacer(),
+                      Row(
+                        children: [
+                          for (var i = 1; i <= 5; i++)
+                            Icon(
+                              i <= r.rating ? Icons.star : Icons.star_border,
+                              size: 13,
+                              color: AppColors.rating,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(width: 6),
                       Text(r.relativeTime, style: AppTypography.caption),
                     ],
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(r.text, style: AppTypography.body),
                 ],
               ),
             ),
+          if (!_expanded && remaining > 0)
+            TextButton.icon(
+              onPressed: () => setState(() => _expanded = true),
+              icon: const Icon(Icons.expand_more, size: 18),
+              label: Text('Voir $remaining avis de plus'),
+            ),
+          if (_expanded && all.length > _initialMax)
+            TextButton.icon(
+              onPressed: () => setState(() => _expanded = false),
+              icon: const Icon(Icons.expand_less, size: 18),
+              label: const Text('Reduire'),
+            ),
+          if (widget.place.mapsUrl != null) ...[
+            const SizedBox(height: 4),
+            OutlinedButton.icon(
+              onPressed: () => _launchUrl(widget.place.mapsUrl!),
+              icon: const Icon(Icons.open_in_new, size: 16),
+              label: const Text('Tous les avis sur Google Maps'),
+            ),
+          ],
+        ],
       ],
     );
   }
@@ -684,6 +761,201 @@ class _ModeChip extends StatelessWidget {
       avatar: Icon(icon, size: 16, color: AppColors.primary),
       label: Text(label),
       onPressed: onTap,
+    );
+  }
+}
+
+/// Section avis de la communaute : affiche les avis soumis + bouton pour en laisser un.
+class _UserReviewSection extends StatelessWidget {
+  const _UserReviewSection({required this.place});
+  final Place place;
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<UserReviewsViewModel>();
+    final reviews = vm.reviewsFor(place.id);
+    final color = PlaceVisuals.color(place.type);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _SectionTitle('Avis de la communaute'),
+            const Spacer(),
+            TextButton.icon(
+              onPressed: () => _openForm(context),
+              icon: const Icon(Icons.rate_review_outlined, size: 18),
+              label: const Text('Laisser mon avis'),
+            ),
+          ],
+        ),
+        if (reviews.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Soyez le premier a donner votre avis sur ce lieu.',
+              style: AppTypography.caption,
+            ),
+          )
+        else
+          for (final r in reviews)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: color.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.person_outline,
+                            size: 16, color: AppColors.textSecondary),
+                        const SizedBox(width: 4),
+                        Text(r.author, style: AppTypography.subtitle),
+                        const SizedBox(width: 8),
+                        Row(
+                          children: [
+                            for (var i = 1; i <= 5; i++)
+                              Icon(
+                                i <= r.rating ? Icons.star : Icons.star_border,
+                                size: 13,
+                                color: AppColors.rating,
+                              ),
+                          ],
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${r.date.day}/${r.date.month}/${r.date.year}',
+                          style: AppTypography.caption,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(r.text, style: AppTypography.body),
+                  ],
+                ),
+              ),
+            ),
+      ],
+    );
+  }
+
+  void _openForm(BuildContext context) {
+    final reviewsVm = context.read<UserReviewsViewModel>();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _ReviewFormSheet(
+        place: place,
+        onSubmit: (rating, text) => reviewsVm.addReview(
+          place.id,
+          UserReview(rating: rating, text: text, date: DateTime.now()),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReviewFormSheet extends StatefulWidget {
+  const _ReviewFormSheet({required this.place, required this.onSubmit});
+  final Place place;
+  final void Function(double rating, String text) onSubmit;
+
+  @override
+  State<_ReviewFormSheet> createState() => _ReviewFormSheetState();
+}
+
+class _ReviewFormSheetState extends State<_ReviewFormSheet> {
+  double _rating = 0;
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = PlaceVisuals.color(widget.place.type);
+    final canSubmit = _rating > 0 && _ctrl.text.trim().isNotEmpty;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.textSecondary.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text('Votre avis sur ${widget.place.name}',
+              style: AppTypography.title),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 1; i <= 5; i++)
+                GestureDetector(
+                  onTap: () => setState(() => _rating = i.toDouble()),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Icon(
+                      _rating >= i ? Icons.star : Icons.star_border,
+                      color: AppColors.rating,
+                      size: 38,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _ctrl,
+            maxLines: 4,
+            textInputAction: TextInputAction.newline,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              hintText: 'Decrivez votre experience...',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: canSubmit
+                  ? () {
+                      widget.onSubmit(_rating, _ctrl.text.trim());
+                      Navigator.pop(context);
+                    }
+                  : null,
+              icon: const Icon(Icons.send),
+              label: const Text('Envoyer mon avis'),
+              style: FilledButton.styleFrom(backgroundColor: color),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

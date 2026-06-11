@@ -15,15 +15,20 @@ enum MapStyle {
 const String _ua = 'com.parismap.parismap_video_guide';
 
 /// Attribution a afficher selon le style (obligatoire).
-String mapAttribution(MapStyle style) => switch (style) {
-      MapStyle.plan => '© OpenStreetMap, © CARTO',
+String mapAttribution(MapStyle style, {bool dark = false}) => switch (style) {
+      MapStyle.plan =>
+        dark ? '© Esri, © OpenStreetMap' : '© OpenStreetMap, © CARTO',
       MapStyle.satellite => 'Imagery © Esri',
       MapStyle.hybride => 'Imagery © Esri, © OpenStreetMap',
     };
 
 /// Construit les couches de tuiles (fond) pour un style donne.
 ///
-/// - Plan HD : CartoDB Voyager (clair) ou Dark Matter (sombre la nuit), retina.
+/// - Plan HD clair : CartoDB Voyager, retina.
+/// - Plan HD sombre : Esri World Dark Gray Canvas (Base + Reference).
+///   Deux couches separees : la base montre la hierarchie des rues avec un
+///   fort contraste (grands axes bien visibles, ruelles quasi invisibles) ;
+///   la reference ajoute les labels/noms de rues et arrondissements par-dessus.
 /// - Satellite : imagerie aerienne Esri World Imagery (gratuite, sans cle).
 /// - Hybride : satellite + couche de labels/rues Esri par-dessus.
 ///
@@ -32,11 +37,28 @@ List<Widget> mapBaseLayers(MapStyle style,
     {required bool retina, bool dark = false}) {
   switch (style) {
     case MapStyle.plan:
+      if (dark) {
+        return [
+          // Fond sombre avec hierarchie de rues : grands axes clairs, ruelles sombres.
+          TileLayer(
+            urlTemplate:
+                'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+            userAgentPackageName: _ua,
+            maxNativeZoom: 17,
+          ),
+          // Labels transparents par-dessus : noms de rues, arrondissements, POI.
+          TileLayer(
+            urlTemplate:
+                'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+            userAgentPackageName: _ua,
+            maxNativeZoom: 17,
+          ),
+        ];
+      }
       return [
         TileLayer(
-          urlTemplate: dark
-              ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-              : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+          urlTemplate:
+              'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
           subdomains: const ['a', 'b', 'c', 'd'],
           retinaMode: retina,
           userAgentPackageName: _ua,

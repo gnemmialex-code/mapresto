@@ -58,10 +58,14 @@ class PlacesListScreen extends StatelessWidget {
                       child: Text('Aucun lieu ne correspond aux filtres.'),
                     ),
                   ),
-                for (final p in visible)
-                  PlaceCardWidget(
-                    place: p,
-                    onTap: () => _openDetail(context, p),
+                for (var i = 0; i < visible.length; i++)
+                  _FadeSlideIn(
+                    key: ValueKey('slide_${visible[i].id}'),
+                    index: i,
+                    child: PlaceCardWidget(
+                      place: visible[i],
+                      onTap: () => _openDetail(context, visible[i]),
+                    ),
                   ),
 
                 // Lieux verrouilles (Premium).
@@ -76,11 +80,15 @@ class PlacesListScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  for (final p in locked)
-                    PremiumLockOverlay(
-                      compact: true,
-                      onUnlock: () => _showPaywall(context),
-                      child: PlaceCardWidget(place: p),
+                  for (var i = 0; i < locked.length; i++)
+                    _FadeSlideIn(
+                      key: ValueKey('slide_locked_${locked[i].id}'),
+                      index: visible.length + i,
+                      child: PremiumLockOverlay(
+                        compact: true,
+                        onUnlock: () => _showPaywall(context),
+                        child: PlaceCardWidget(place: locked[i]),
+                      ),
                     ),
                 ],
                 const SizedBox(height: 16),
@@ -102,6 +110,64 @@ class PlacesListScreen extends StatelessWidget {
     // >>> POINT DE BRANCHEMENT PAYWALL <<<
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Paywall a brancher ici.')),
+    );
+  }
+}
+
+// ─── Animation d'entrée staggered ────────────────────────────────────────────
+// Chaque carte apparaît avec un fade + slide-up, décalé selon son index.
+// Le délai max est plafonné à 550 ms pour ne pas faire attendre les longues listes.
+
+class _FadeSlideIn extends StatefulWidget {
+  const _FadeSlideIn({super.key, required this.index, required this.child});
+  final int index;
+  final Widget child;
+
+  @override
+  State<_FadeSlideIn> createState() => _FadeSlideInState();
+}
+
+class _FadeSlideInState extends State<_FadeSlideIn>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 380),
+  );
+  late final Animation<double> _curve = CurvedAnimation(
+    parent: _ctrl,
+    curve: Curves.easeOutCubic,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    final delay = (widget.index * 55).clamp(0, 550);
+    Future.delayed(Duration(milliseconds: delay), () {
+      if (mounted) _ctrl.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _curve,
+      builder: (_, child) {
+        final t = _curve.value;
+        return Opacity(
+          opacity: t,
+          child: Transform.translate(
+            offset: Offset(0, (1 - t) * 22),
+            child: child,
+          ),
+        );
+      },
+      child: widget.child,
     );
   }
 }
