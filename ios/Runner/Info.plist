@@ -4,6 +4,10 @@
 <dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Pour afficher les etablissements autour de vous.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Pour joindre des photos a vos propositions d'adresses et avis.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Pour prendre une photo a joindre a vos propositions et avis.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

@@ -42,6 +42,9 @@ dependencies:
   # Appels HTTP directs (Anthropic API pour la Recherche IA).
   http: ^1.2.2
 
+  # Selection de photos (formulaires "Ajouter une adresse" / "Donner mon avis").
+  image_picker: ^1.1.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

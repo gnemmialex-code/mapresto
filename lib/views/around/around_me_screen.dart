@@ -46,7 +46,37 @@ class _AroundMeScreenState extends State<AroundMeScreen> {
       _user = loc;
       _loading = false;
     });
+    // Recentre la carte sur la nouvelle position.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fitToRadius());
   }
+
+  /// Relance la detection de position (apres refus, GPS lent, etc.).
+  Future<void> _refresh() async {
+    setState(() => _loading = true);
+    await _load();
+  }
+
+  /// Action proposee selon la raison du repli.
+  Future<void> _enableLocation() async {
+    final status = _user?.status;
+    if (status == LocationStatus.serviceDisabled) {
+      await _locationService.openLocationSettings();
+    } else if (status == LocationStatus.deniedForever) {
+      await _locationService.openAppSettings();
+    }
+    // Dans tous les cas on retente (re-demande la permission si refusee).
+    await _refresh();
+  }
+
+  String _fallbackMessage(LocationStatus status) => switch (status) {
+        LocationStatus.serviceDisabled =>
+          'GPS desactive — activez la localisation',
+        LocationStatus.deniedForever =>
+          'Position refusee — autorisez-la dans les reglages',
+        LocationStatus.denied => 'Position refusee — autorisez l\'acces',
+        LocationStatus.timeout => 'GPS introuvable — reessayez',
+        _ => 'Position indisponible — reessayez',
+      };
 
   double get _radiusMeters => _radiusKm * 1000;
 
@@ -91,9 +121,9 @@ class _AroundMeScreenState extends State<AroundMeScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        appBar: _Bar(),
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        appBar: _Bar(onRefresh: null),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -103,7 +133,7 @@ class _AroundMeScreenState extends State<AroundMeScreen> {
     final mapDark = context.watch<ThemeController>().mapIsDark;
 
     return Scaffold(
-      appBar: const _Bar(),
+      appBar: _Bar(onRefresh: _refresh),
       body: Column(
         children: [
           // ---- Carte ----
@@ -162,17 +192,43 @@ class _AroundMeScreenState extends State<AroundMeScreen> {
                 if (!user.isReal)
                   Positioned(
                     left: 8,
+                    right: 8,
                     top: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
                       decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.black.withValues(alpha: 0.72),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Text('Position simulee (Paris)',
-                          style: AppTypography.tag
-                              .copyWith(color: Colors.white)),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.location_off,
+                              size: 16, color: Colors.white70),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _fallbackMessage(user.status),
+                              style: AppTypography.tag
+                                  .copyWith(color: Colors.white),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton(
+                            onPressed: _enableLocation,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              minimumSize: Size.zero,
+                              tapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Text('Activer ma position',
+                                style: AppTypography.tag
+                                    .copyWith(color: Colors.white)),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
               ],
@@ -271,11 +327,21 @@ class _AroundMeScreenState extends State<AroundMeScreen> {
 }
 
 class _Bar extends StatelessWidget implements PreferredSizeWidget {
-  const _Bar();
+  const _Bar({required this.onRefresh});
+  final VoidCallback? onRefresh;
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
   @override
-  Widget build(BuildContext context) => AppBar(title: const Text('Autour de moi'));
+  Widget build(BuildContext context) => AppBar(
+        title: const Text('Autour de moi'),
+        actions: [
+          IconButton(
+            tooltip: 'Actualiser ma position',
+            icon: const Icon(Icons.my_location),
+            onPressed: onRefresh,
+          ),
+        ],
+      );
 }
 
 class _UserDot extends StatelessWidget {

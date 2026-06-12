@@ -6,6 +6,9 @@ import '../../theme/app_typography.dart';
 import '../../viewmodels/places_view_model.dart';
 import '../../widgets/filter_bar.dart';
 import '../../widgets/premium_lock_overlay.dart';
+import '../../widgets/primary_button.dart';
+import '../contribute/add_address_screen.dart';
+import '../contribute/review_form_screen.dart';
 import '../place_detail/place_detail_screen.dart';
 import 'place_card_widget.dart';
 
@@ -91,7 +94,11 @@ class PlacesListScreen extends StatelessWidget {
                       ),
                     ),
                 ],
-                const SizedBox(height: 16),
+
+                // ---- Contribuer (fin de liste) ----
+                const SizedBox(height: 24),
+                const _ContributeFooter(),
+                const SizedBox(height: 24),
               ],
             ),
           ),
@@ -110,6 +117,63 @@ class PlacesListScreen extends StatelessWidget {
     // >>> POINT DE BRANCHEMENT PAYWALL <<<
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Paywall a brancher ici.')),
+    );
+  }
+}
+
+/// Pied de liste : contribuer (proposer une adresse / donner son avis).
+class _ContributeFooter extends StatelessWidget {
+  const _ContributeFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        children: [
+          Text('Une adresse manque ? Un avis a partager ?',
+              style: AppTypography.subtitle, textAlign: TextAlign.center),
+          const SizedBox(height: 4),
+          Text(
+            'Aidez la communaute a enrichir la carte.',
+            style: AppTypography.caption,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 14),
+          PrimaryButton(
+            label: 'Ajouter une adresse',
+            icon: Icons.add_location_alt,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AddAddressScreen()),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ReviewFormScreen()),
+              ),
+              icon: const Icon(Icons.rate_review_outlined, size: 18),
+              label: const Text('Donner mon avis'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
