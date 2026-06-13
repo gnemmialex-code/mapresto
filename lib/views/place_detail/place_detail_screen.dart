@@ -110,6 +110,12 @@ class PlaceDetailContent extends StatelessWidget {
           _LinkButtons(place: place, color: color),
           const SizedBox(height: 20),
 
+          // ---- Galerie photos ----
+          if (place.photos.length > 1) ...[
+            _GallerySection(photos: place.photos, color: color),
+            const SizedBox(height: 20),
+          ],
+
           // ---- Avis (reels via Google) ----
           _ReviewsSection(place: place),
           const SizedBox(height: 20),
@@ -347,6 +353,127 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
             ),
           ),
       ],
+    );
+  }
+}
+
+// ── Galerie ─────────────────────────────────────────────────────────────────
+
+class _GallerySection extends StatelessWidget {
+  const _GallerySection({required this.photos, required this.color});
+  final List<String> photos;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.photo_library_outlined, size: 18, color: color),
+            const SizedBox(width: 6),
+            _SectionTitle('Galerie'),
+            const Spacer(),
+            Text(
+              '${photos.length} photos',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: photos.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 4,
+            mainAxisSpacing: 4,
+          ),
+          itemBuilder: (context, i) => GestureDetector(
+            onTap: () => _openViewer(context, i),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: PlacePhoto(path: photos[i], fallbackColor: color),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _openViewer(BuildContext context, int initialIndex) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.black,
+        pageBuilder: (_, _, _) => _PhotoViewerScreen(
+          photos: photos,
+          initialIndex: initialIndex,
+        ),
+      ),
+    );
+  }
+}
+
+class _PhotoViewerScreen extends StatefulWidget {
+  const _PhotoViewerScreen({required this.photos, required this.initialIndex});
+  final List<String> photos;
+  final int initialIndex;
+
+  @override
+  State<_PhotoViewerScreen> createState() => _PhotoViewerScreenState();
+}
+
+class _PhotoViewerScreenState extends State<_PhotoViewerScreen> {
+  late int _current;
+  late final PageController _pageCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _current = widget.initialIndex;
+    _pageCtrl = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(
+          '${_current + 1} / ${widget.photos.length}',
+          style: const TextStyle(color: Colors.white, fontSize: 15),
+        ),
+        centerTitle: true,
+      ),
+      body: PageView.builder(
+        controller: _pageCtrl,
+        itemCount: widget.photos.length,
+        onPageChanged: (i) => setState(() => _current = i),
+        itemBuilder: (_, i) => InteractiveViewer(
+          minScale: 1,
+          maxScale: 4,
+          child: Center(
+            child: PlacePhoto(
+              path: widget.photos[i],
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

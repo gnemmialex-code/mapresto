@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models/place.dart';
 import 'services/freemium_service.dart';
@@ -15,6 +16,7 @@ import 'viewmodels/theme_controller.dart';
 import 'viewmodels/user_reviews_view_model.dart';
 import 'viewmodels/user_tags_view_model.dart';
 import 'views/onboarding/onboarding_screen.dart';
+import 'views/root_navigation.dart';
 
 /// Racine : charge les lieux (Supabase ou mock) puis monte l'app.
 class ParisMapApp extends StatefulWidget {
@@ -57,9 +59,29 @@ class _ParisMapAppState extends State<ParisMapApp> {
 }
 
 /// Partie de l'app qui nécessite les lieux chargés.
-class _AppWithPlaces extends StatelessWidget {
+class _AppWithPlaces extends StatefulWidget {
   const _AppWithPlaces({required this.places});
   final List<Place> places;
+
+  @override
+  State<_AppWithPlaces> createState() => _AppWithPlacesState();
+}
+
+class _AppWithPlacesState extends State<_AppWithPlaces> {
+  bool? _onboardingDone;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkOnboarding();
+  }
+
+  Future<void> _checkOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() => _onboardingDone = prefs.getBool('onboarding_done') ?? false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +93,7 @@ class _AppWithPlaces extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(
           create: (_) => PlacesViewModel(
-            places: places,
+            places: widget.places,
             freemiumService: freemium,
           ),
         ),
@@ -83,19 +105,26 @@ class _AppWithPlaces extends StatelessWidget {
           create: (_) => CollectionsViewModel(
             dataService: mockData,
             sharingService: sharing,
-            places: places,
+            places: widget.places,
           ),
         ),
       ],
       child: Consumer<ThemeController>(
         builder: (context, themeCtrl, _) {
+          if (_onboardingDone == null) {
+            return MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.themeFor(themeCtrl.isDark),
+              home: const Scaffold(
+                body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+              ),
+            );
+          }
           return MaterialApp(
             title: 'ParisMap Video Guide',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.themeFor(themeCtrl.isDark),
-            // L'écran d'onboarding/filtre s'affiche au lancement.
-            // Il navigue vers RootNavigation une fois les filtres validés.
-            home: const OnboardingScreen(),
+            home: _onboardingDone! ? const RootNavigation() : const OnboardingScreen(),
           );
         },
       ),

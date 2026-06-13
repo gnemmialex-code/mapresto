@@ -45,6 +45,9 @@ dependencies:
   # Selection de photos (formulaires "Ajouter une adresse" / "Donner mon avis").
   image_picker: ^1.1.2
 
+  # Persistance locale legere (login, preferences utilisateur).
+  shared_preferences: ^2.3.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'onboarding_filter_screen.dart';
 
 const _kPrimary = Color(0xFF6C5CE7);
@@ -38,7 +39,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  void _finish(String name, String email) {
+  Future<void> _finish(String name, String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_name', name);
+    await prefs.setString('user_email', email);
+    await prefs.setBool('onboarding_done', true);
+
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (_, _, _) => const OnboardingFilterScreen(),
