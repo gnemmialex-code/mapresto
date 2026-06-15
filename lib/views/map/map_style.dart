@@ -67,11 +67,13 @@ List<Widget> mapBaseLayers(MapStyle style,
       ];
     case MapStyle.satellite:
       return [
+        // maxNativeZoom: 17 → flutter_map zoome la tuile z17 au lieu de charger
+        // des tuiles Esri inexistantes qui affichent "Map data not yet available".
         TileLayer(
           urlTemplate:
               'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
           userAgentPackageName: _ua,
-          maxNativeZoom: 19,
+          maxNativeZoom: 17,
         ),
       ];
     case MapStyle.hybride:
@@ -80,9 +82,8 @@ List<Widget> mapBaseLayers(MapStyle style,
           urlTemplate:
               'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
           userAgentPackageName: _ua,
-          maxNativeZoom: 19,
+          maxNativeZoom: 17,
         ),
-        // Labels de rues / lieux (PNG transparents) par-dessus le satellite.
         // Labels de rues / lieux (PNG transparents) par-dessus le satellite.
         TileLayer(
           urlTemplate:

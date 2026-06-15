@@ -36,6 +36,7 @@ class _VideoFeedScreenState extends State<VideoFeedScreen> {
 
   static String? _videoOf(Place p) {
     if (p.instagramVideos.isNotEmpty) return p.instagramVideos.first;
+    if (p.originalVideos.isNotEmpty) return p.originalVideos.first;
     if (p.videos.isNotEmpty) return p.videos.first;
     return null;
   }

@@ -1,7 +1,7 @@
 name: parismap_video_guide
 description: "ParisMap Video Guide - carte interactive des bars, restaurants et hotels avec filtres, fiches video et collections partageables."
 publish_to: 'none'
-version: 1.0.0+2
+version: 1.0.0+3
 
 environment:
   sdk: ^3.11.0

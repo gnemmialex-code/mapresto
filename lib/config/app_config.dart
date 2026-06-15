@@ -20,5 +20,5 @@ class AppConfig {
   ///
   /// NB : sur le Web, on garde flutter_map (la 3D Google Maps n'existe pas sur
   /// web) ; ce flag n'a donc d'effet que sur mobile.
-  static const bool useNativeGoogleMaps = false;
+  static const bool useNativeGoogleMaps = true;
 }

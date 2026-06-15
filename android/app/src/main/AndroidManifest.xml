@@ -13,7 +13,7 @@
              Remplacer la valeur par votre cle "Maps SDK for Android". -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="YOUR_ANDROID_MAPS_API_KEY"/>
+            android:value="AIzaSyAae-SG4XoHQWmtpdCwaFf6RlDy7-kunw0"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"

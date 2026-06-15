@@ -2,7 +2,7 @@ import Flutter
 import UIKit
 // Carte native Google Maps (vraie 3D) - decommenter quand vous activez
 // AppConfig.useNativeGoogleMaps :
-// import GoogleMaps
+import GoogleMaps
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -10,8 +10,7 @@ import UIKit
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // Cle "Maps SDK for iOS" - decommenter et remplacer par votre cle :
-    // GMSServices.provideAPIKey("YOUR_IOS_MAPS_API_KEY")
+    GMSServices.provideAPIKey("AIzaSyDiBS2arIhLwxxqGQo_WBPp8I1NOhiI46g")
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

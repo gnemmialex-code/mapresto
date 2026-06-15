@@ -188,12 +188,14 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  /// Ouvre la zone visible en vue 3D inclinee dans Google Maps.
+  /// La vue 3D n'est pas disponible dans la version web (flutter_map est 2D).
   void _open3D() {
-    final c = _mapController.camera.center;
-    final url = 'https://www.google.com/maps/@${c.latitude},${c.longitude},'
-        '250a,35y,45h,60t/data=!3m1!1e3';
-    launchExternal(url);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('La vue 3D est disponible uniquement sur l\'application mobile.'),
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
   void _showPremiumSnack() {
