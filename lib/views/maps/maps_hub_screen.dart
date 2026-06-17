@@ -38,6 +38,15 @@ class MapsHubScreen extends StatelessWidget {
             creator: vm.isCreatorUnlocked,
             onTap: () => _go(context, const ProfileScreen()),
           ),
+          const SizedBox(height: 16),
+
+          // ---- Hero : Je crée ma carte ----
+          _MyMapHeroCard(
+            count: vm.myMapCount,
+            limit: vm.mapLimit,
+            unlocked: vm.isCreatorUnlocked,
+            onTap: () => _go(context, const CreateMyMapScreen()),
+          ),
 
           // ---- Decouvrir ----
           const _SectionHeader('Decouvrir', icon: Icons.explore_outlined),
@@ -74,14 +83,6 @@ class MapsHubScreen extends StatelessWidget {
 
           // ---- Mes cartes ----
           const _SectionHeader('Mes cartes', icon: Icons.map_outlined),
-          _HubCard(
-            color: AppColors.hotel,
-            icon: Icons.add_location_alt,
-            title: 'Je cree ma carte',
-            subtitle:
-                'Gratuit, jusqu\'a ${vm.mapLimit} lieux (${vm.myMapCount} ajoutes).',
-            onTap: () => _go(context, const CreateMyMapScreen()),
-          ),
           _HubCard(
             color: AppColors.premium,
             icon: Icons.workspace_premium,
@@ -137,6 +138,128 @@ class MapsHubScreen extends StatelessWidget {
             ),
           ]),
         ],
+      ),
+    );
+  }
+}
+
+/// Hero card "Je crée ma carte" — affiché en premiere position dans le hub.
+class _MyMapHeroCard extends StatelessWidget {
+  const _MyMapHeroCard({
+    required this.count,
+    required this.limit,
+    required this.unlocked,
+    required this.onTap,
+  });
+
+  final int count;
+  final int limit;
+  final bool unlocked;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    const cardColor = Color(0xFF5B4FE9);
+    final ratio = unlocked ? 1.0 : (count / limit).clamp(0.0, 1.0);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF5B4FE9), Color(0xFF8B7FFF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x405B4FE9),
+                blurRadius: 16,
+                offset: Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.add_location_alt,
+                        color: Colors.white, size: 26),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Je crée ma carte',
+                        style: AppTypography.title
+                            .copyWith(color: Colors.white, fontSize: 18),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        unlocked ? '$count lieux' : '$count / $limit',
+                        style: AppTypography.caption.copyWith(
+                            color: Colors.white, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: ratio,
+                    minHeight: 6,
+                    backgroundColor: Colors.white.withValues(alpha: 0.25),
+                    valueColor:
+                        const AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        unlocked
+                            ? 'Adresses illimitees · style perso · partage'
+                            : 'Sauvegardez vos adresses favorites et partagez votre carte',
+                        style: AppTypography.caption
+                            .copyWith(color: Colors.white70),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Ouvrir',
+                        style: AppTypography.caption.copyWith(
+                          color: cardColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -2700,8 +2700,8 @@ class MockDataService {
       instagramVideos: _igVideosForPlace(p.id),
       // Nos interviews maison : rempli via _originalVideosMap si disponible.
       originalVideos: _originalVideosForPlace(p.id),
-      // Extraits d'avis de demo pour les premiers lieux ; vide sinon.
-      reviews: _reviewSamples[p.id] ?? const [],
+      // Extraits d'avis Google : specifiques si disponibles, sinon generes.
+      reviews: _reviewSamples[p.id] ?? _generateReviews(p),
     );
   }
 
@@ -2804,6 +2804,106 @@ class MockDataService {
       s.add('après-midi');
     }
     return s.toList();
+  }
+
+  // ---- Génération d'avis Google pour les lieux sans entrée dans _reviewSamples ----
+
+  static const _reviewAuthors = [
+    'Sophie M.', 'Thomas L.', 'Julie B.', 'Kevin R.', 'Lea H.',
+    'Marc D.', 'Chloe P.', 'Antoine D.', 'Noemie C.', 'Pierre V.',
+    'Margot S.', 'Romain F.', 'Sarah N.', 'Julien K.', 'Emma R.',
+    'Lucas P.', 'Ines T.', 'Baptiste M.', 'Amandine D.', 'Thibault R.',
+  ];
+  static const _reviewTimes = [
+    'il y a 4 jours', 'il y a 1 semaine', 'il y a 2 semaines',
+    'il y a 3 semaines', 'il y a 1 mois', 'il y a 6 semaines',
+    'il y a 2 mois', 'il y a 3 mois', 'il y a 4 mois', 'il y a 5 mois',
+  ];
+  static const _reviewRatings = [5.0, 4.0, 5.0, 5.0, 4.0];
+
+  static List<String> _textsForType(PlaceType type) {
+    switch (type) {
+      case PlaceType.bar:
+        return [
+          'Super ambiance et cocktails au top. On y retourne sans hesiter !',
+          'Endroit tres sympa, staff accueillant. Ideal pour un apero branché.',
+          "L'un des meilleurs bars du quartier. Cocktails creatifs et delicieux.",
+          'Cadre chaleureux, service rapide et ambiance au rendez-vous. Tres bonne adresse.',
+          "Coup de coeur ! Belle carte de cocktails et atmosphere unique. A recommander.",
+          'Bar tres agreable, bon rapport qualite-prix. Le personnel est adorable.',
+          "Endroit incontournable du quartier. Cocktails inventifs et decor soigne.",
+          'Tres bonne soiree, musique parfaite et service aux petits soins.',
+        ];
+      case PlaceType.restaurant:
+        return [
+          'Excellent rapport qualite-prix, cuisine savoureuse et service attentionne.',
+          "Un vrai regal ! Chaque plat est soigne, l'ambiance est parfaite.",
+          'Super resto, portions genereuses et qualite au rendez-vous. On reviendra !',
+          'Service impeccable et cuisine delicieuse. Une des meilleures tables du quartier.',
+          'Tres bonne experience, produits frais et chef talentueux. A tester absolument.',
+          'Cadre agreable et plats savoureux. Le service est rapide et souriant.',
+          'Restaurant exceptionnel, carte variee et prix raisonnables. Coup de coeur !',
+          'Tres bonne adresse, ambiance chaleureuse et cuisine de qualite. On recommande.',
+        ];
+      case PlaceType.hotel:
+        return [
+          'Hotel magnifique, chambre confortable et personnel tres accueillant.',
+          'Sejour parfait, emplacement ideal et standing irreprochable. On recommande.',
+          'Excellent hotel, service impeccable et cadre exceptionnel. Une vraie reussite.',
+          'Tres bel etablissement, proprete parfaite et petit-dejeuner delicieux.',
+          'Hotel au top ! Vue magnifique, chambre spacieuse et staff aux petits soins.',
+          'Cadre luxueux et service de qualite. Chambre bien agencee et tres propre.',
+          'Hotel ideal pour un sejour a Paris. Situation parfaite et accueil chaleureux.',
+          'Sejour inoubliable dans cet hotel. Design soigne et confort exceptionnel.',
+        ];
+      case PlaceType.rooftop:
+        return [
+          "Vue a couper le souffle ! Cocktails excellents et ambiance magique.",
+          'Panorama splendide sur Paris. Parfait au coucher du soleil, incontournable.',
+          'Rooftop exceptionnel, vue panoramique et cocktails au top. A faire !',
+          'Experience unique avec vue imprenable. Service sympa et ambiance festive.',
+          'Le meilleur rooftop du quartier. Vue magnifique et staff accueillant.',
+          "Soiree parfaite avec vue exceptionnelle sur les toits de Paris.",
+          'Endroit magique au coucher du soleil. Cocktails creatifs et ambiance au top.',
+          'Vue panoramique a 360 degres. On y retourne des que possible !',
+        ];
+      case PlaceType.parc:
+        return [
+          'Endroit magnifique pour se ressourcer. Parfait pour un pique-nique.',
+          'Oasis de verdure au coeur de Paris. Calme et tres agreable en toute saison.',
+          'Beau parc, bien entretenu et spacieux. Ideal pour une balade ou se detendre.',
+          "Un de mes parcs favoris a Paris. Paysages sublimes et ambiance sereine.",
+          "Super endroit pour s'evader du bruit de la ville. Tres bien entretenu.",
+          'Parc magnifique, ideal pour le sport ou la detente. Toujours agreable.',
+          'Verdure superbe et atmosphere apaisante. Lieu de promenade ideal.',
+          'Cadre naturel exceptionnel en plein Paris. Parfait pour se ressourcer.',
+        ];
+      case PlaceType.adresse:
+        return [
+          'Endroit incroyable et tres photogenique. A visiter absolument !',
+          "Lieu magique plein de charme et d'histoire. On s'y attarde volontiers.",
+          'Spot magnifique, vraiment unique a Paris. Les photos ne rendent pas justice.',
+          'Lieu incontournable, atmosphere particuliere et cadre exceptionnel.',
+          "Super decouverte ! Endroit authentique et hors des sentiers battus.",
+          'Adresse charmante que tout le monde devrait connaitre a Paris.',
+          'Lieu unique qui merite vraiment le detour. Atmosphere magique garantie.',
+          'Endroit authentique et plein de charme. Une belle decouverte parisienne.',
+        ];
+    }
+  }
+
+  static List<Review> _generateReviews(Place p) {
+    final hash = p.id.hashCode.abs();
+    final texts = _textsForType(p.type);
+    return [
+      for (var i = 0; i < 5; i++)
+        Review(
+          author: _reviewAuthors[(hash + i * 7) % _reviewAuthors.length],
+          rating: _reviewRatings[i % _reviewRatings.length],
+          text: texts[(hash + i * 3) % texts.length],
+          relativeTime: _reviewTimes[(hash + i * 11) % _reviewTimes.length],
+        ),
+    ];
   }
 
   // ---- Styles de collection mock ----

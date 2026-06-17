@@ -6,8 +6,10 @@ import '../../models/place.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/place_visuals.dart';
+import '../../viewmodels/collections_view_model.dart';
 import '../../viewmodels/user_reviews_view_model.dart';
 import '../../viewmodels/user_tags_view_model.dart';
+import '../maps/create_my_map_screen.dart';
 import '../../widgets/place_photo.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/tag_chip.dart';
@@ -287,18 +289,8 @@ class PlaceDetailContent extends StatelessWidget {
           _UserReviewSection(place: place),
           const SizedBox(height: 20),
 
-          // ---- Action collection ----
-          PrimaryButton(
-            label: 'Ajouter a ma collection',
-            icon: Icons.bookmark_add,
-            color: color,
-            onPressed: () {
-              // TODO: brancher l'ajout reel a une collection.
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('"${place.name}" ajoute (mock).')),
-              );
-            },
-          ),
+          // ---- Ajouter a ma carte ----
+          _AddToMyMapButton(place: place, color: color),
         ],
       ),
     );
@@ -649,7 +641,7 @@ class _ReviewsSection extends StatefulWidget {
 }
 
 class _ReviewsSectionState extends State<_ReviewsSection> {
-  static const _initialMax = 3;
+  static const _initialMax = 5;
   static const _hardMax = 10;
   bool _expanded = false;
 
@@ -1084,6 +1076,81 @@ class _ReviewFormSheetState extends State<_ReviewFormSheet> {
         ],
       ),
     );
+  }
+}
+
+/// Bouton "Ajouter / Retirer de ma carte" branche sur CollectionsViewModel.
+class _AddToMyMapButton extends StatelessWidget {
+  const _AddToMyMapButton({required this.place, required this.color});
+  final Place place;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<CollectionsViewModel>();
+    final isAdded = vm.isInMyMap(place);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        FilledButton.icon(
+          onPressed: () => _toggle(context, vm, isAdded),
+          icon: Icon(isAdded ? Icons.bookmark_added : Icons.bookmark_add),
+          label: Text(isAdded ? 'Dans ma carte  ✓' : 'Ajouter à ma carte'),
+          style: FilledButton.styleFrom(
+            backgroundColor: isAdded ? Colors.green.shade600 : color,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+          ),
+        ),
+        if (isAdded) ...[
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const CreateMyMapScreen()),
+            ),
+            icon: const Icon(Icons.map_outlined, size: 18),
+            label: const Text('Voir dans ma carte'),
+          ),
+        ],
+      ],
+    );
+  }
+
+  void _toggle(BuildContext context, CollectionsViewModel vm, bool isAdded) {
+    if (isAdded) {
+      vm.removeFromMyMap(place);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('"${place.name}" retire de ma carte.')),
+      );
+    } else {
+      final added = vm.addToMyMap(place);
+      if (!added) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+                'Limite atteinte. Passez au plan Createur pour ajouter plus de lieux.'),
+            action: SnackBarAction(
+              label: 'Voir',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CreateMyMapScreen()),
+              ),
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('"${place.name}" ajoute a ma carte !'),
+            action: SnackBarAction(
+              label: 'Ma carte',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CreateMyMapScreen()),
+              ),
+            ),
+          ),
+        );
+      }
+    }
   }
 }
 

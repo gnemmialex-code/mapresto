@@ -73,7 +73,7 @@ class _RootNavigationState extends State<RootNavigation>
           BottomNavigationBarItem(
               icon: Icon(Icons.play_circle_outline), label: 'Vidéos'),
           BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_outlined), label: 'Mon Espace'),
+              icon: Icon(Icons.add_location_alt), label: 'Ma Carte'),
         ],
       ),
     );
