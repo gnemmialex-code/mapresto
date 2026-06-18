@@ -46,39 +46,50 @@ class PlacesService {
 
   // ── Auto-détection Supabase Storage ──────────────────────────────────────────
   //
-  // Déposez vos fichiers dans le bucket "place-videos" (public) avec le format :
+  // Deux formats acceptés dans le bucket "place-videos" (public) :
   //
-  //   {id_lieu}_{numéro}.mp4
+  //   FORMAT DOSSIER (recommandé) :
+  //     p01/1.mp4, p01/2.mp4, p01/3.mp4
   //
-  //   Exemples :
-  //     p01_1.mp4      → 1ʳᵉ vidéo du lieu p01
-  //     p01_2.mp4      → 2ᵉ vidéo du lieu p01
-  //     p17_1.mp4      → 1ʳᵉ vidéo du lieu p17
+  //   FORMAT PLAT (legacy) :
+  //     p01_1.mp4, p01_2.mp4, p01_3.mp4
   //
-  // L'ID du lieu est visible dans mock_data_service.dart (champ id : 'p01', 'p02'…).
   // La 1ʳᵉ vidéo de chaque lieu apparaît dans l'onglet Vidéos (feed TikTok).
-  // Toutes les vidéos d'un lieu apparaissent dans sa fiche > "Videos Instagram".
-  //
-  // Étapes Supabase :
-  //   1. Dashboard → Storage → New bucket → nom : "place-videos", Public ✓
-  //   2. Upload vos fichiers mp4 en respectant le nommage ci-dessus
-  //   3. Relancez l'app — les vidéos apparaissent automatiquement
+  // Toutes les vidéos d'un lieu apparaissent dans sa fiche > Galerie.
   // ─────────────────────────────────────────────────────────────────────────────
+
+  // Nombre max de slots vidéo générés par lieu (format dossier).
+  static const int _maxVideosPerFolder = 3;
 
   Future<Map<String, List<String>>> _buildStorageVideoMap() async {
     if (!Config.isSupabaseConfigured) return {};
     try {
-      final files = await Supabase.instance.client.storage
+      final root = await Supabase.instance.client.storage
           .from('place-videos')
           .list();
       final map = <String, List<String>>{};
-      for (final file in files) {
-        final match = RegExp(r'^(p\d+)_(\d+)\.mp4$').firstMatch(file.name);
-        if (match == null) continue;
-        final id = match.group(1)!;
-        final url = '${Config.supabaseUrl}'
-            '/storage/v1/object/public/place-videos/${file.name}';
-        map.putIfAbsent(id, () => []).add(url);
+      for (final item in root) {
+        // Format plat : p01_1.mp4
+        final flat = RegExp(r'^(p\d+)_(\d+)\.mp4$').firstMatch(item.name);
+        if (flat != null) {
+          final id = flat.group(1)!;
+          final url = '${Config.supabaseUrl}'
+              '/storage/v1/object/public/place-videos/${item.name}';
+          map.putIfAbsent(id, () => []).add(url);
+          continue;
+        }
+        // Format dossier : p01 (entrée virtuelle renvoyée par Supabase Storage)
+        // → génère les slots 1..N ; les slots inexistants seront filtrés
+        //   par _SmartVideoTile (GET Range) côté galerie et par le player dans le feed.
+        final folder = RegExp(r'^(p\d+)/?$').firstMatch(item.name);
+        if (folder != null) {
+          final id = folder.group(1)!;
+          map[id] = [
+            for (var i = 1; i <= _maxVideosPerFolder; i++)
+              '${Config.supabaseUrl}'
+              '/storage/v1/object/public/place-videos/$id/$i.mp4',
+          ];
+        }
       }
       return map;
     } catch (_) {

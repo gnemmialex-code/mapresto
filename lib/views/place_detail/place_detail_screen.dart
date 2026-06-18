@@ -526,10 +526,13 @@ class _SmartVideoTileState extends State<_SmartVideoTile> {
 
   Future<void> _checkExists() async {
     try {
+      // HEAD est bloqué par CORS sur Flutter web — GET Range:bytes=0-0
+      // télécharge 1 octet seulement, compatible CORS Supabase public.
       final r = await http
-          .head(Uri.parse(widget.url))
-          .timeout(const Duration(seconds: 5));
-      if (mounted) setState(() => _exists = r.statusCode < 400);
+          .get(Uri.parse(widget.url), headers: {'Range': 'bytes=0-0'})
+          .timeout(const Duration(seconds: 6));
+      // 200 OK ou 206 Partial Content → vidéo présente
+      if (mounted) setState(() => _exists = r.statusCode == 200 || r.statusCode == 206);
     } catch (_) {
       if (mounted) setState(() => _exists = false);
     }
