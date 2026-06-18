@@ -23,6 +23,10 @@ class PlacePhoto extends StatelessWidget {
 
   bool get _isNetwork => path.startsWith('http');
 
+  Widget _fallback() => Container(
+        color: (fallbackColor ?? Colors.grey.shade700).withValues(alpha: 0.12),
+      );
+
   @override
   Widget build(BuildContext context) {
     if (_isNetwork) {
@@ -30,13 +34,13 @@ class PlacePhoto extends StatelessWidget {
         imageUrl: path,
         fit: fit,
         placeholder: (_, _) => _ShimmerBox(color: fallbackColor),
-        errorWidget: (_, _, _) => _PhotoPlaceholder(color: fallbackColor),
+        errorWidget: (_, _, _) => _fallback(),
       );
     }
     return Image.asset(
       path,
       fit: fit,
-      errorBuilder: (_, _, _) => _PhotoPlaceholder(color: fallbackColor),
+      errorBuilder: (_, _, _) => _fallback(),
     );
   }
 }
@@ -49,34 +53,6 @@ class _ShimmerBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: (color ?? Colors.grey.shade700).withValues(alpha: 0.25),
-    );
-  }
-}
-
-class _PhotoPlaceholder extends StatelessWidget {
-  const _PhotoPlaceholder({this.color});
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = color ?? Colors.grey.shade700;
-    return Container(
-      color: c.withValues(alpha: 0.12),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.image_outlined, size: 36, color: c.withValues(alpha: 0.5)),
-          const SizedBox(height: 6),
-          Text(
-            'Photo à venir',
-            style: TextStyle(
-              fontSize: 12,
-              color: c.withValues(alpha: 0.6),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

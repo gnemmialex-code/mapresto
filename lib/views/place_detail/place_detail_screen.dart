@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -307,21 +308,43 @@ class _PhotoCarousel extends StatefulWidget {
 }
 
 class _PhotoCarouselState extends State<_PhotoCarousel> {
+  final _failed = <String>{};
   int _page = 0;
+
+  List<String> get _shown =>
+      widget.photos.where((p) => !_failed.contains(p)).toList();
+
+  void _markFailed(String url) {
+    if (!mounted || _failed.contains(url)) return;
+    setState(() {
+      _failed.add(url);
+      final count = _shown.length;
+      if (_page >= count && count > 0) _page = count - 1;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.photos.isEmpty) return Container(color: widget.color);
+    final shown = _shown;
+    if (widget.photos.isEmpty ||
+        (shown.isEmpty && _failed.length == widget.photos.length)) {
+      return Container(color: widget.color);
+    }
     return Stack(
       children: [
         PageView(
+          key: ValueKey(shown.length),
           onPageChanged: (i) => setState(() => _page = i),
           children: [
-            for (final path in widget.photos)
-              PlacePhoto(path: path, fallbackColor: widget.color),
+            for (final path in shown)
+              _ErrorAwarePhoto(
+                path: path,
+                color: widget.color,
+                onError: () => _markFailed(path),
+              ),
           ],
         ),
-        if (widget.photos.length > 1)
+        if (shown.length > 1)
           Positioned(
             bottom: 10,
             left: 0,
@@ -329,7 +352,7 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                for (var i = 0; i < widget.photos.length; i++)
+                for (var i = 0; i < shown.length; i++)
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -345,6 +368,48 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _ErrorAwarePhoto extends StatefulWidget {
+  const _ErrorAwarePhoto({
+    required this.path,
+    required this.color,
+    required this.onError,
+  });
+  final String path;
+  final Color color;
+  final VoidCallback onError;
+
+  @override
+  State<_ErrorAwarePhoto> createState() => _ErrorAwarePhotoState();
+}
+
+class _ErrorAwarePhotoState extends State<_ErrorAwarePhoto> {
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.path.startsWith('http')) {
+      return Image.asset(
+        widget.path,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) {
+          WidgetsBinding.instance
+              .addPostFrameCallback((_) { if (mounted) widget.onError(); });
+          return const SizedBox.shrink();
+        },
+      );
+    }
+    return CachedNetworkImage(
+      imageUrl: widget.path,
+      fit: BoxFit.cover,
+      placeholder: (_, _) =>
+          Container(color: widget.color.withValues(alpha: 0.25)),
+      errorWidget: (_, _, _) {
+        WidgetsBinding.instance
+            .addPostFrameCallback((_) { if (mounted) widget.onError(); });
+        return Container(color: widget.color.withValues(alpha: 0.15));
+      },
     );
   }
 }
@@ -365,34 +430,27 @@ class _GallerySection extends StatelessWidget {
           children: [
             Icon(Icons.photo_library_outlined, size: 18, color: color),
             const SizedBox(width: 6),
-            _SectionTitle('Galerie'),
-            const Spacer(),
-            Text(
-              '${photos.length} photos',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade500,
-              ),
-            ),
+            _SectionTitle('Galerie photos'),
           ],
         ),
         const SizedBox(height: 10),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: photos.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 4,
-            mainAxisSpacing: 4,
-          ),
-          itemBuilder: (context, i) => GestureDetector(
-            onTap: () => _openViewer(context, i),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: PlacePhoto(path: photos[i], fallbackColor: color),
-            ),
-          ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final tileSize = (constraints.maxWidth - 8) / 3;
+            return Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: [
+                for (var i = 0; i < photos.length; i++)
+                  _SmartGalleryTile(
+                    url: photos[i],
+                    color: color,
+                    size: tileSize,
+                    onTap: () => _openViewer(context, i),
+                  ),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -406,6 +464,53 @@ class _GallerySection extends StatelessWidget {
         pageBuilder: (_, _, _) => _PhotoViewerScreen(
           photos: photos,
           initialIndex: initialIndex,
+        ),
+      ),
+    );
+  }
+}
+
+class _SmartGalleryTile extends StatefulWidget {
+  const _SmartGalleryTile({
+    required this.url,
+    required this.color,
+    required this.size,
+    required this.onTap,
+  });
+  final String url;
+  final Color color;
+  final double size;
+  final VoidCallback onTap;
+
+  @override
+  State<_SmartGalleryTile> createState() => _SmartGalleryTileState();
+}
+
+class _SmartGalleryTileState extends State<_SmartGalleryTile> {
+  bool _hidden = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_hidden) return const SizedBox.shrink();
+    return SizedBox(
+      width: widget.size,
+      height: widget.size,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: CachedNetworkImage(
+            imageUrl: widget.url,
+            fit: BoxFit.cover,
+            placeholder: (_, _) =>
+                Container(color: widget.color.withValues(alpha: 0.3)),
+            errorWidget: (_, _, _) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) setState(() => _hidden = true);
+              });
+              return const SizedBox.shrink();
+            },
+          ),
         ),
       ),
     );
@@ -630,109 +735,178 @@ class _LinkChip extends StatelessWidget {
   }
 }
 
-/// Section avis Google : jusqu'a 10 avis avec "Voir plus" si > 3.
-/// Si `place.reviews` est vide, renvoie vers Google Maps (pas d'avis inventes).
-class _ReviewsSection extends StatefulWidget {
+/// Section avis Google : 5 cartes style Google, toujours visibles directement.
+class _ReviewsSection extends StatelessWidget {
   const _ReviewsSection({required this.place});
   final Place place;
 
   @override
-  State<_ReviewsSection> createState() => _ReviewsSectionState();
-}
-
-class _ReviewsSectionState extends State<_ReviewsSection> {
-  static const _initialMax = 5;
-  static const _hardMax = 10;
-  bool _expanded = false;
-
-  @override
   Widget build(BuildContext context) {
-    final all = widget.place.reviews.take(_hardMax).toList();
-    final shown = _expanded ? all : all.take(_initialMax).toList();
-    final remaining = all.length - _initialMax;
+    final reviews = place.reviews.take(5).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
+            Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: const Center(
+                child: Text(
+                  'G',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF4285F4),
+                    height: 1,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
             _SectionTitle('Avis Google'),
             const Spacer(),
-            const Icon(Icons.star, color: AppColors.rating, size: 18),
-            const SizedBox(width: 4),
-            Text('${widget.place.rating}', style: AppTypography.subtitle),
-            Text(' · ${widget.place.reviewCount} avis',
-                style: AppTypography.caption),
+            const Icon(Icons.star, color: AppColors.rating, size: 16),
+            const SizedBox(width: 3),
+            Text('${place.rating}', style: AppTypography.subtitle),
+            Text(' · ${place.reviewCount}', style: AppTypography.caption),
           ],
         ),
-        const SizedBox(height: 8),
-        if (all.isEmpty) ...[
+        const SizedBox(height: 10),
+        if (reviews.isEmpty) ...[
           Text(
-            'Avis verifies via Google. Consultez-les directement a la source.',
+            'Consultez les avis directement sur Google.',
             style: AppTypography.caption,
           ),
           const SizedBox(height: 8),
-          if (widget.place.mapsUrl != null)
+          if (place.mapsUrl != null)
             OutlinedButton.icon(
-              onPressed: () => _launchUrl(widget.place.mapsUrl!),
+              onPressed: () => _launchUrl(place.mapsUrl!),
               icon: const Icon(Icons.reviews_outlined, size: 18),
-              label: const Text('Voir les vrais avis (Google)'),
+              label: const Text('Voir les avis (Google)'),
             ),
         ] else ...[
-          for (final r in shown)
+          for (final r in reviews) _GoogleReviewCard(review: r),
+          if (place.mapsUrl != null)
             Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.person_outline,
-                          size: 16, color: AppColors.textSecondary),
-                      const SizedBox(width: 4),
-                      Text(r.author, style: AppTypography.subtitle),
-                      const Spacer(),
-                      Row(
-                        children: [
-                          for (var i = 1; i <= 5; i++)
-                            Icon(
-                              i <= r.rating ? Icons.star : Icons.star_border,
-                              size: 13,
-                              color: AppColors.rating,
-                            ),
-                        ],
-                      ),
-                      const SizedBox(width: 6),
-                      Text(r.relativeTime, style: AppTypography.caption),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(r.text, style: AppTypography.body),
-                ],
+              padding: const EdgeInsets.only(top: 2),
+              child: OutlinedButton.icon(
+                onPressed: () => _launchUrl(place.mapsUrl!),
+                icon: const Icon(Icons.open_in_new, size: 16),
+                label: const Text('Tous les avis sur Google Maps'),
               ),
             ),
-          if (!_expanded && remaining > 0)
-            TextButton.icon(
-              onPressed: () => setState(() => _expanded = true),
-              icon: const Icon(Icons.expand_more, size: 18),
-              label: Text('Voir $remaining avis de plus'),
-            ),
-          if (_expanded && all.length > _initialMax)
-            TextButton.icon(
-              onPressed: () => setState(() => _expanded = false),
-              icon: const Icon(Icons.expand_less, size: 18),
-              label: const Text('Reduire'),
-            ),
-          if (widget.place.mapsUrl != null) ...[
-            const SizedBox(height: 4),
-            OutlinedButton.icon(
-              onPressed: () => _launchUrl(widget.place.mapsUrl!),
-              icon: const Icon(Icons.open_in_new, size: 16),
-              label: const Text('Tous les avis sur Google Maps'),
-            ),
-          ],
         ],
       ],
+    );
+  }
+}
+
+class _GoogleReviewCard extends StatelessWidget {
+  const _GoogleReviewCard({required this.review});
+  final Review review;
+
+  static const _kAvatarColors = [
+    Color(0xFF4285F4),
+    Color(0xFF34A853),
+    Color(0xFFEA4335),
+    Color(0xFF9C27B0),
+    Color(0xFF00ACC1),
+    Color(0xFFFF7043),
+  ];
+
+  static Color _avatarColor(String name) =>
+      _kAvatarColors[name.codeUnitAt(0) % _kAvatarColors.length];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: _avatarColor(review.author),
+                child: Text(
+                  review.author.substring(0, 1).toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(review.author, style: AppTypography.subtitle),
+                    Text(review.relativeTime, style: AppTypography.caption),
+                  ],
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: const Text(
+                  'G',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF4285F4),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              for (var i = 1; i <= 5; i++)
+                Icon(
+                  i <= review.rating ? Icons.star : Icons.star_border,
+                  size: 13,
+                  color: AppColors.rating,
+                ),
+              const SizedBox(width: 6),
+              Text(
+                '${review.rating.toInt()}/5',
+                style: AppTypography.caption,
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(review.text, style: AppTypography.body),
+        ],
+      ),
     );
   }
 }
