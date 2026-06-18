@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -113,9 +114,13 @@ class PlaceDetailContent extends StatelessWidget {
           _LinkButtons(place: place, color: color),
           const SizedBox(height: 20),
 
-          // ---- Galerie photos ----
-          if (place.photos.length > 1) ...[
-            _GallerySection(photos: place.photos, color: color),
+          // ---- Galerie (photos + videos) ----
+          if (place.photos.isNotEmpty || place.instagramVideos.isNotEmpty) ...[
+            _GallerySection(
+              photos: place.photos,
+              videos: place.instagramVideos,
+              color: color,
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -225,38 +230,7 @@ class PlaceDetailContent extends StatelessWidget {
             const SizedBox(height: 20),
           ],
 
-          // ---- Videos Instagram ----
-          if (place.instagramVideos.isNotEmpty) ...[
-            Row(
-              children: [
-                const Icon(Icons.camera_alt, size: 18, color: Color(0xFFE1306C)),
-                const SizedBox(width: 6),
-                _SectionTitle('Videos Instagram'),
-                const Spacer(),
-                if (place.instagramUrl != null)
-                  TextButton(
-                    onPressed: () => _launchUrl(place.instagramUrl!),
-                    child: const Text('Voir le compte'),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 110,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: place.instagramVideos.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 10),
-                itemBuilder: (_, i) => _VideoThumb(
-                  color: const Color(0xFFE1306C),
-                  label: 'Instagram',
-                  onTap: () =>
-                      PlaceVideoPlayer.open(context, place.instagramVideos[i]),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
+          // (videos maintenant intégrées dans la galerie)
 
           // ---- Nos videos (interviews maison) ----
           Row(
@@ -414,11 +388,16 @@ class _ErrorAwarePhotoState extends State<_ErrorAwarePhoto> {
   }
 }
 
-// ── Galerie ─────────────────────────────────────────────────────────────────
+// ── Galerie (photos + videos) ────────────────────────────────────────────────
 
 class _GallerySection extends StatelessWidget {
-  const _GallerySection({required this.photos, required this.color});
+  const _GallerySection({
+    required this.photos,
+    required this.videos,
+    required this.color,
+  });
   final List<String> photos;
+  final List<String> videos;
   final Color color;
 
   @override
@@ -430,7 +409,7 @@ class _GallerySection extends StatelessWidget {
           children: [
             Icon(Icons.photo_library_outlined, size: 18, color: color),
             const SizedBox(width: 6),
-            _SectionTitle('Galerie photos'),
+            _SectionTitle('Galerie'),
           ],
         ),
         const SizedBox(height: 10),
@@ -448,6 +427,8 @@ class _GallerySection extends StatelessWidget {
                     size: tileSize,
                     onTap: () => _openViewer(context, i),
                   ),
+                for (final url in videos)
+                  _SmartVideoTile(url: url, color: color, size: tileSize),
               ],
             );
           },
@@ -510,6 +491,107 @@ class _SmartGalleryTileState extends State<_SmartGalleryTile> {
               });
               return const SizedBox.shrink();
             },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Tuile vidéo dans la galerie ──────────────────────────────────────────────
+
+class _SmartVideoTile extends StatefulWidget {
+  const _SmartVideoTile({
+    required this.url,
+    required this.color,
+    required this.size,
+  });
+  final String url;
+  final Color color;
+  final double size;
+
+  @override
+  State<_SmartVideoTile> createState() => _SmartVideoTileState();
+}
+
+class _SmartVideoTileState extends State<_SmartVideoTile> {
+  // null = vérification en cours, true = existe, false = introuvable
+  bool? _exists;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkExists();
+  }
+
+  Future<void> _checkExists() async {
+    try {
+      final r = await http
+          .head(Uri.parse(widget.url))
+          .timeout(const Duration(seconds: 5));
+      if (mounted) setState(() => _exists = r.statusCode < 400);
+    } catch (_) {
+      if (mounted) setState(() => _exists = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_exists == false) return const SizedBox.shrink();
+
+    final size = widget.size;
+    final color = widget.color;
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: GestureDetector(
+          onTap: _exists == true
+              ? () => PlaceVideoPlayer.open(context, widget.url)
+              : null,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [color, color.withValues(alpha: 0.65)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: _exists == null
+                ? Container(color: color.withValues(alpha: 0.25))
+                : Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Icon(
+                        Icons.play_circle_filled,
+                        color: Colors.white.withValues(alpha: 0.92),
+                        size: size * 0.42,
+                      ),
+                      Positioned(
+                        bottom: 6,
+                        right: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.55),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'VIDÉO',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ),
       ),

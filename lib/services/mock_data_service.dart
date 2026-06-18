@@ -183,19 +183,33 @@ class MockDataService {
     ];
   }
 
-  // ---- Videos Instagram par lieu ----
-  // Peut contenir plusieurs URLs par lieu (carousel).
-  // Si la cle est absente, une video de demo est utilisee.
+  // ---- Videos clips par lieu (bucket Supabase "place-videos") ----
+  //
+  // SUPABASE STORAGE :
+  //   Bucket public : "place-videos"
+  //   Chemin        : {place_id}/1.mp4, {place_id}/2.mp4, ...
+  //   Exemple       : place-videos/p01/1.mp4
+  //
+  // Chaque lieu tente de charger jusqu'a _maxVideosPerPlace slots.
+  // Les slots sans fichier Supabase sont caches automatiquement (HEAD check).
+  static const int _maxVideosPerPlace = 3;
+
+  // Override manuel pour des URLs hors-convention (YouTube, autre CDN, etc.)
   static const Map<String, List<String>> _igVideos = {
-    // 'p01': [
-    //   'https://ton-cdn.com/videos/perchoir-ig-1.mp4',
-    //   'https://ton-cdn.com/videos/perchoir-ig-2.mp4',
-    //   'https://ton-cdn.com/videos/perchoir-ig-3.mp4',
-    // ],
+    // 'p01': ['https://mon-cdn.com/videos/perchoir-ig.mp4'],
   };
+
+  static String _supabaseVideoUrl(String placeId, int index) =>
+      '${Config.supabaseUrl}'
+      '/storage/v1/object/public/place-videos/$placeId/$index.mp4';
 
   static List<String> _igVideosForPlace(String id) {
     if (_igVideos.containsKey(id)) return _igVideos[id]!;
+    if (Config.isSupabaseConfigured) {
+      return [
+        for (var i = 1; i <= _maxVideosPerPlace; i++) _supabaseVideoUrl(id, i),
+      ];
+    }
     return [id.hashCode.isEven ? _sampleVideoA : _sampleVideoB];
   }
 
