@@ -1,7 +1,7 @@
 name: parismap_video_guide
 description: "ParisMap Video Guide - carte interactive des bars, restaurants et hotels avec filtres, fiches video et collections partageables."
 publish_to: 'none'
-version: 1.0.0+3
+version: 1.0.0+5
 
 environment:
   sdk: ^3.11.0
@@ -47,6 +47,9 @@ dependencies:
 
   # Persistance locale legere (login, preferences utilisateur).
   shared_preferences: ^2.3.4
+
+  # Notifications locales (alertes de proximite : lieu enregistre a proximite).
+  flutter_local_notifications: ^17.2.3
 
 dev_dependencies:
   flutter_test:

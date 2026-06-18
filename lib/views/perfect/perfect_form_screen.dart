@@ -5,6 +5,7 @@ import '../../services/location_service.dart';
 import '../../services/mock_data_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
+import '../../utils/haptics.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/tag_chip.dart';
 import 'perfect_result_screen.dart';
@@ -49,6 +50,7 @@ class _PerfectFormScreenState extends State<PerfectFormScreen> {
   bool _loading = false;
 
   Future<void> _submit() async {
+    Haptics.medium();
     setState(() => _loading = true);
 
     double lat;

@@ -4,16 +4,14 @@ import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../viewmodels/collections_view_model.dart';
+import '../../widgets/concierge_card.dart';
 import '../around/around_me_screen.dart';
 import '../access/access_code_screen.dart';
-import '../access/private_map_screen.dart';
 import '../perfect/perfect_form_screen.dart';
 import '../profile/profile_screen.dart';
-import '../referral/referral_screen.dart';
 import '../suggest/suggest_place_screen.dart';
 import '../suggestion/suggestion_form_screen.dart';
 import 'create_my_map_screen.dart';
-import 'creator_space_screen.dart';
 
 /// Hub "Mon Espace" : organise en sections (profil, decouvrir, mes cartes,
 /// vitrine influenceurs, communaute).
@@ -47,6 +45,10 @@ class MapsHubScreen extends StatelessWidget {
             unlocked: vm.isCreatorUnlocked,
             onTap: () => _go(context, const CreateMyMapScreen()),
           ),
+          const SizedBox(height: 12),
+
+          // ---- Conciergerie (acces direct WhatsApp) ----
+          const ConciergeCard(),
 
           // ---- Decouvrir ----
           const _SectionHeader('Decouvrir', icon: Icons.explore_outlined),
@@ -87,34 +89,62 @@ class MapsHubScreen extends StatelessWidget {
             color: AppColors.premium,
             icon: Icons.workspace_premium,
             title: 'Espace Influenceur',
-            subtitle: vm.isCreatorUnlocked
-                ? 'Actif - adresses illimitees, style perso, partage.'
-                : 'Adresses illimitees, filtres avances, style & code.',
-            badge: vm.isCreatorUnlocked ? 'ACTIF' : 'PRO',
-            onTap: () => _go(context, const CreatorSpaceScreen()),
+            subtitle: 'Adresses illimitées, filtres avancés, style & code.',
+            badge: 'PRO',
           ),
 
           // ---- Vitrine influenceurs ----
           const _SectionHeader('Cartes d\'influenceurs',
               icon: Icons.verified_outlined),
-          SizedBox(
-            height: 150,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: vm.influencerShowcase.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 12),
-              itemBuilder: (_, i) {
-                final c = vm.influencerShowcase[i];
-                return _ShowcaseCard(
-                  onTap: () =>
-                      _go(context, PrivateMapScreen(collection: c)),
-                  color: c.style.primaryColor,
-                  name: c.style.name,
-                  handle: c.authorHandle ?? '',
-                  count: c.places.length,
-                );
-              },
-            ),
+          // Vitrine desactivee pour l'instant : grisee + non cliquable.
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Opacity(
+                opacity: 0.45,
+                child: IgnorePointer(
+                  child: SizedBox(
+                    height: 150,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: vm.influencerShowcase.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 12),
+                      itemBuilder: (_, i) {
+                        final c = vm.influencerShowcase[i];
+                        return _ShowcaseCard(
+                          onTap: () {},
+                          color: c.style.primaryColor,
+                          name: c.style.name,
+                          handle: c.authorHandle ?? '',
+                          count: c.places.length,
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.lock_outline, color: Colors.white, size: 14),
+                    SizedBox(width: 6),
+                    Text('Bientôt disponible',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            ],
           ),
 
           // ---- Communaute ----
@@ -124,10 +154,7 @@ class MapsHubScreen extends StatelessWidget {
               color: AppColors.accent,
               icon: Icons.card_giftcard,
               title: 'Parrainage',
-              caption: vm.referralCount > 0
-                  ? '${vm.referralCount} filleul(s)'
-                  : '+5 lieux / filleul',
-              onTap: () => _go(context, const ReferralScreen()),
+              caption: '+5 lieux / filleul',
             ),
             _Feature(
               color: AppColors.restaurant,
@@ -370,13 +397,13 @@ class _Feature {
   final IconData icon;
   final String title;
   final String caption;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   const _Feature({
     required this.color,
     required this.icon,
     required this.title,
     required this.caption,
-    required this.onTap,
+    this.onTap,
   });
 }
 
@@ -412,35 +439,63 @@ class _FeatureTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: InkWell(
-        onTap: data.onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          height: 122,
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final disabled = data.onTap == null;
+    return Opacity(
+      opacity: disabled ? 0.6 : 1.0,
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: InkWell(
+          onTap: data.onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
             children: [
               Container(
-                padding: const EdgeInsets.all(9),
-                decoration: BoxDecoration(
-                  color: data.color.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(12),
+                height: 122,
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: data.color.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(data.icon, color: data.color, size: 22),
+                    ),
+                    const Spacer(),
+                    Text(data.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.subtitle),
+                    const SizedBox(height: 2),
+                    Text(data.caption,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.caption),
+                  ],
                 ),
-                child: Icon(data.icon, color: data.color, size: 22),
               ),
-              const Spacer(),
-              Text(data.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.subtitle),
-              const SizedBox(height: 2),
-              Text(data.caption,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.caption),
+              if (disabled)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade600,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Bientôt',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -456,71 +511,94 @@ class _HubCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.onTap,
     this.badge,
-  });
+  }) : onTap = null;
 
   final Color color;
   final IconData icon;
   final String title;
   final String subtitle;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final String? badge;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(14),
+    final disabled = onTap == null;
+    return Opacity(
+      opacity: disabled ? 0.6 : 1.0,
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: color, size: 26),
                 ),
-                child: Icon(icon, color: color, size: 26),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(title, style: AppTypography.subtitle),
-                        ),
-                        if (badge != null) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: color,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              badge!,
-                              style: AppTypography.tag
-                                  .copyWith(color: Colors.white, fontSize: 9),
-                            ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(title, style: AppTypography.subtitle),
                           ),
+                          if (disabled) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade600,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Text(
+                                'Bientôt',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ] else if (badge != null) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: color,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                badge!,
+                                style: AppTypography.tag
+                                    .copyWith(color: Colors.white, fontSize: 9),
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(subtitle, style: AppTypography.caption),
-                  ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(subtitle, style: AppTypography.caption),
+                    ],
+                  ),
                 ),
-              ),
-              Icon(Icons.chevron_right, color: AppColors.textSecondary),
-            ],
+                Icon(
+                  disabled ? Icons.lock_outline : Icons.chevron_right,
+                  color: AppColors.textSecondary,
+                ),
+              ],
+            ),
           ),
         ),
       ),

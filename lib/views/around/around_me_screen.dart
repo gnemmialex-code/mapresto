@@ -5,12 +5,16 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/filter_options.dart';
 import '../../models/place.dart';
 import '../../services/location_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
+import '../../utils/haptics.dart';
 import '../../viewmodels/places_view_model.dart';
 import '../../viewmodels/theme_controller.dart';
+import '../../widgets/empty_state.dart';
+import '../../widgets/skeleton.dart';
 import '../map/map_shared.dart';
 import '../map/map_style.dart';
 import '../map/place_marker_widget.dart';
@@ -32,6 +36,7 @@ class _AroundMeScreenState extends State<AroundMeScreen> {
   bool _loading = true;
   double _radiusKm = 2;
   PlaceType? _type;
+  bool _openNow = false;
 
   @override
   void initState() {
@@ -80,12 +85,17 @@ class _AroundMeScreenState extends State<AroundMeScreen> {
 
   double get _radiusMeters => _radiusKm * 1000;
 
+  String get _radiusLabel => _radiusKm < 1
+      ? '${(_radiusKm * 1000).round()} m'
+      : '${_radiusKm.toStringAsFixed(1)} km';
+
   /// Lieux dans le rayon, tries par distance.
   List<MapEntry<Place, double>> _nearby(List<Place> places) {
     final user = _user!;
     final list = <MapEntry<Place, double>>[];
     for (final p in places) {
       if (_type != null && p.type != _type) continue;
+      if (_openNow && !FilterOptions.isOpenNow(p)) continue;
       final d = _locationService.distanceMeters(
           user.latitude, user.longitude, p.latitude, p.longitude);
       if (d <= _radiusMeters) list.add(MapEntry(p, d));
@@ -123,7 +133,10 @@ class _AroundMeScreenState extends State<AroundMeScreen> {
     if (_loading) {
       return Scaffold(
         appBar: _Bar(onRefresh: null),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const Padding(
+          padding: EdgeInsets.only(top: 8),
+          child: SkeletonPlaceList(count: 5),
+        ),
       );
     }
 
@@ -241,6 +254,29 @@ class _AroundMeScreenState extends State<AroundMeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ---- Preset "Ce soir" / Ouvert maintenant ----
+                Row(
+                  children: [
+                    _OpenNowChip(
+                      selected: _openNow,
+                      onTap: () {
+                        Haptics.selection();
+                        setState(() => _openNow = !_openNow);
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _openNow
+                            ? 'Ouverts maintenant, autour de vous'
+                            : 'Tous les lieux autour de vous',
+                        style: AppTypography.caption
+                            .copyWith(color: AppColors.textSecondary),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
                 Wrap(
                   spacing: 8,
                   children: [
@@ -270,11 +306,34 @@ class _AroundMeScreenState extends State<AroundMeScreen> {
           // ---- Liste ----
           Expanded(
             child: nearby.isEmpty
-                ? Center(
-                    child: Text(
-                      'Aucun lieu dans ${_radiusKm < 1 ? '${(_radiusKm * 1000).round()} m' : '${_radiusKm.toStringAsFixed(1)} km'}.',
-                      style: AppTypography.body,
-                    ),
+                ? EmptyState(
+                    icon: _openNow
+                        ? Icons.nightlife_outlined
+                        : Icons.explore_off_outlined,
+                    title: _openNow
+                        ? 'Rien d\'ouvert tout près'
+                        : 'Aucun lieu dans ce rayon',
+                    message: _openNow
+                        ? 'Aucun lieu ouvert maintenant dans $_radiusLabel. '
+                            'Élargissez la zone ou affichez tous les lieux.'
+                        : 'Personne à l\'horizon dans $_radiusLabel. '
+                            'Essayez d\'élargir le rayon de recherche.',
+                    primaryActionLabel:
+                        _radiusKm < 15 ? 'Élargir le rayon' : null,
+                    onPrimaryAction: _radiusKm < 15
+                        ? () {
+                            Haptics.selection();
+                            _setRadius((_radiusKm * 2).clamp(0.1, 15));
+                          }
+                        : null,
+                    secondaryActionLabel:
+                        _openNow ? 'Afficher tous les lieux' : null,
+                    onSecondaryAction: _openNow
+                        ? () {
+                            Haptics.selection();
+                            setState(() => _openNow = false);
+                          }
+                        : null,
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
@@ -321,7 +380,53 @@ class _AroundMeScreenState extends State<AroundMeScreen> {
       labelStyle: AppTypography.tag.copyWith(
         color: selected ? Colors.white : AppColors.textPrimary,
       ),
-      onSelected: (_) => setState(() => _type = value),
+      onSelected: (_) {
+        Haptics.selection();
+        setState(() => _type = value);
+      },
+    );
+  }
+}
+
+/// Toggle "Ouvert maintenant" (preset "Ce soir, autour de moi").
+class _OpenNowChip extends StatelessWidget {
+  const _OpenNowChip({required this.selected, required this.onTap});
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Colors.green.shade600;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? c : AppColors.background,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? c : Colors.black12,
+            width: 1.2,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.bolt,
+                size: 15,
+                color: selected ? Colors.white : AppColors.textSecondary),
+            const SizedBox(width: 4),
+            Text(
+              'Ouvert maintenant',
+              style: AppTypography.tag.copyWith(
+                color: selected ? Colors.white : AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

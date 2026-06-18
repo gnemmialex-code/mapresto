@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
+import '../../utils/haptics.dart';
 import '../../viewmodels/places_view_model.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/filter_bar.dart';
 import '../../widgets/premium_lock_overlay.dart';
 import '../../widgets/primary_button.dart';
@@ -55,10 +57,24 @@ class PlacesListScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               children: [
                 if (visible.isEmpty && locked.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 60),
-                    child: Center(
-                      child: Text('Aucun lieu ne correspond aux filtres.'),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 40),
+                    child: EmptyState(
+                      icon: Icons.search_off_rounded,
+                      title: vm.filtersActive
+                          ? 'Aucun lieu ne correspond'
+                          : 'Aucun lieu pour le moment',
+                      message: vm.filtersActive
+                          ? 'Essayez d\'élargir vos critères ou de retirer un filtre.'
+                          : 'Revenez bientôt : de nouvelles adresses arrivent régulièrement.',
+                      primaryActionLabel:
+                          vm.filtersActive ? 'Réinitialiser les filtres' : null,
+                      onPrimaryAction: vm.filtersActive
+                          ? () {
+                              Haptics.selection();
+                              vm.clearFilters();
+                            }
+                          : null,
                     ),
                   ),
                 for (var i = 0; i < visible.length; i++)
@@ -108,6 +124,7 @@ class PlacesListScreen extends StatelessWidget {
   }
 
   void _openDetail(BuildContext context, place) {
+    Haptics.light();
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => PlaceDetailScreen(place: place)),
     );

@@ -27,6 +27,8 @@ class PlacesViewModel extends ChangeNotifier {
   final Set<String> _peak = {};
   final Set<String> _openingHours = {};
 
+  bool _openNow = false;
+
   // IDs retournés par la Recherche IA (null = mode filtres classiques).
   List<String>? _aiSearchIds;
 
@@ -45,7 +47,11 @@ class PlacesViewModel extends ChangeNotifier {
         crowd: _crowd.toList(),
         peak: _peak.toList(),
         openingHours: _openingHours.toList(),
+        openNow: _openNow,
       );
+
+  bool get openNow => _openNow;
+  void toggleOpenNow() { _openNow = !_openNow; notifyListeners(); }
 
   bool get filtersActive => filter.isActive || _aiSearchIds != null;
   int get activeFilterCount => filter.activeCount;
@@ -132,6 +138,7 @@ class PlacesViewModel extends ChangeNotifier {
     _crowd.clear();
     _peak.clear();
     _openingHours.clear();
+    _openNow = false;
     _aiSearchIds = null;
     notifyListeners();
   }

@@ -35,7 +35,7 @@ class ThemeController extends ChangeNotifier {
     });
   }
 
-  AppThemeMode _mode = AppThemeMode.auto;
+  AppThemeMode _mode = AppThemeMode.light;
   bool _lastAutoDark = _autoIsDark();
   Timer? _timer;
 

@@ -10,6 +10,7 @@ import '../services/mock_data_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../viewmodels/places_view_model.dart';
+import '../views/search/search_screen.dart';
 import 'primary_button.dart';
 import 'tag_chip.dart';
 
@@ -45,6 +46,7 @@ class FilterBar extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
+                _SearchButton(),
                 for (final t in PlaceType.values)
                   _TypeChip(label: t.label, type: t, vm: vm),
               ],
@@ -58,6 +60,12 @@ class FilterBar extends StatelessWidget {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
+                      _QuickFilterChip(
+                        label: 'Ouvert',
+                        selected: vm.openNow,
+                        color: Colors.green.shade600,
+                        onTap: vm.toggleOpenNow,
+                      ),
                       for (var level = 1; level <= 4; level++)
                         _QuickFilterChip(
                           label: '€' * level,
@@ -82,6 +90,40 @@ class FilterBar extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Bouton recherche textuelle
+// ────────────────────────────────────────────────────────────────────
+
+class _SearchButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const SearchScreen()),
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.search, size: 15, color: AppColors.primary),
+            const SizedBox(width: 5),
+            Text('Chercher',
+                style: AppTypography.tag.copyWith(
+                    color: AppColors.primary, fontWeight: FontWeight.w700)),
+          ],
+        ),
       ),
     );
   }

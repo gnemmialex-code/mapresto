@@ -7,8 +7,11 @@ import '../../models/itinerary.dart';
 import '../../services/itinerary_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
+import '../../utils/haptics.dart';
 import '../../viewmodels/places_view_model.dart';
 import '../../viewmodels/theme_controller.dart';
+import '../../widgets/concierge_card.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/primary_button.dart';
 import '../map/map_shared.dart';
 import '../map/map_style.dart';
@@ -51,15 +54,14 @@ class _PerfectResultScreenState extends State<PerfectResultScreen> {
     return Scaffold(
       appBar: AppBar(title: Text('Itineraire ${it.moment.label.toLowerCase()}')),
       body: it.stops.isEmpty
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'Pas assez de lieux pour composer un itineraire. '
-                  'Augmentez le budget.',
-                  textAlign: TextAlign.center,
-                ),
-              ),
+          ? EmptyState(
+              icon: Icons.route_outlined,
+              title: 'Itinéraire impossible',
+              message:
+                  'Pas assez de lieux correspondent à vos critères. Augmentez '
+                  'le budget ou élargissez l\'ambiance souhaitée.',
+              primaryActionLabel: 'Modifier mes choix',
+              onPrimaryAction: () => Navigator.of(context).pop(),
             )
           : ListView(
               padding: const EdgeInsets.all(16),
@@ -135,7 +137,10 @@ class _PerfectResultScreenState extends State<PerfectResultScreen> {
                 PrimaryButton(
                   label: 'Lancer l\'itineraire (Google Maps)',
                   icon: Icons.directions_walk,
-                  onPressed: () => launchExternal(_service.routeUrl(it)),
+                  onPressed: () {
+                    Haptics.medium();
+                    launchExternal(_service.routeUrl(it));
+                  },
                 ),
                 const SizedBox(height: 16),
 
@@ -146,6 +151,30 @@ class _PerfectResultScreenState extends State<PerfectResultScreen> {
                     stop: it.stops[i],
                     distanceLabel: _fmt(it.stops[i].distanceFromPrev),
                   ),
+                const SizedBox(height: 8),
+                // Conciergerie : aide a la reservation des etapes.
+                OutlinedButton.icon(
+                  onPressed: () => showConciergeSheet(
+                    context,
+                    customMessage:
+                        'Bonjour 👋 Je viens de composer un itinéraire '
+                        '${it.moment.label.toLowerCase()} sur mapresto '
+                        '(${it.stops.map((s) => s.place.name).join(' → ')}). '
+                        'Pouvez-vous m\'aider à réserver ?',
+                  ),
+                  icon: const Icon(Icons.support_agent, size: 18,
+                      color: Color(0xFF25D366)),
+                  label: const Text('Réserver via la conciergerie'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF128C7E),
+                    side: const BorderSide(color: Color(0xFF25D366)),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 8),
                 OutlinedButton.icon(
                   onPressed: () => Navigator.of(context).pop(),

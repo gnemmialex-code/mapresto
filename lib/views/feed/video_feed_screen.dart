@@ -356,7 +356,7 @@ class _ActionsColumn extends StatelessWidget {
       children: [
         _ActionButton(
           icon: saved ? Icons.bookmark : Icons.bookmark_border,
-          label: saved ? 'Sauve' : 'Sauver',
+          label: saved ? 'Enregistré' : 'Enregistrer',
           highlight: saved,
           onTap: () {
             if (saved) {
@@ -377,7 +377,7 @@ class _ActionsColumn extends StatelessWidget {
         const SizedBox(height: 18),
         _ActionButton(
           icon: Icons.info_outline,
-          label: 'En savoir',
+          label: 'En savoir plus',
           onTap: () => showPlaceQuickSheet(context, place),
         ),
         const SizedBox(height: 18),

@@ -16,6 +16,7 @@ class FilterOptions {
   final List<String> crowd;
   final List<String> peak;
   final List<String> openingHours;
+  final bool openNow;
 
   const FilterOptions({
     this.type,
@@ -30,6 +31,7 @@ class FilterOptions {
     this.crowd = const [],
     this.peak = const [],
     this.openingHours = const [],
+    this.openNow = false,
   });
 
   bool get isActive =>
@@ -44,7 +46,8 @@ class FilterOptions {
       cuisine.isNotEmpty ||
       crowd.isNotEmpty ||
       peak.isNotEmpty ||
-      openingHours.isNotEmpty;
+      openingHours.isNotEmpty ||
+      openNow;
 
   int get activeCount {
     var count = 0;
@@ -52,6 +55,7 @@ class FilterOptions {
     if (minRating != null) count++;
     if (maxPriceLevel != null) count++;
     if (minAveragePrice != null || maxAveragePrice != null) count++;
+    if (openNow) count++;
     count += ambiance.length +
         music.length +
         style.length +
@@ -75,6 +79,27 @@ class FilterOptions {
     if (crowd.isNotEmpty && !crowd.any(place.crowdTags.contains)) return false;
     if (peak.isNotEmpty && !peak.any(place.peakTags.contains)) return false;
     if (openingHours.isNotEmpty && !openingHours.any(place.openingHours.contains)) return false;
+    if (openNow && !isOpenNow(place)) return false;
     return true;
+  }
+
+  /// Détermine si un lieu est ouvert maintenant selon ses créneaux habituels.
+  static bool isOpenNow(Place place) {
+    if (place.openingHours.isEmpty) return true;
+    final now = DateTime.now();
+    final h = now.hour;
+    final isWeekend = now.weekday >= 6;
+    for (final oh in place.openingHours) {
+      final l = oh.toLowerCase();
+      if (l.contains('toute la journée') || l.contains('toute la journee')) return true;
+      if (l.contains('matin') && h >= 7 && h < 12) return true;
+      if (l.contains('midi') && h >= 11 && h < 15) return true;
+      if ((l.contains('après-midi') || l.contains('apres-midi')) && h >= 15 && h < 19) return true;
+      if (l.contains('after-work') && h >= 17 && h < 21) return true;
+      if (l.contains('soir') && (h >= 18 || h < 2)) return true;
+      if (l.contains('nuit') && (h >= 22 || h < 6)) return true;
+      if (l.contains('week-end') && isWeekend) return true;
+    }
+    return false;
   }
 }

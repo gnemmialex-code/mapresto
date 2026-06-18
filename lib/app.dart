@@ -6,6 +6,7 @@ import 'models/place.dart';
 import 'services/freemium_service.dart';
 import 'services/mock_data_service.dart';
 import 'services/places_service.dart';
+import 'services/proximity_service.dart';
 import 'services/sharing_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
@@ -74,12 +75,23 @@ class _AppWithPlacesState extends State<_AppWithPlaces> {
   void initState() {
     super.initState();
     _checkOnboarding();
+    _checkNewPlaces();
   }
 
   Future<void> _checkOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
       setState(() => _onboardingDone = prefs.getBool('onboarding_done') ?? false);
+    }
+  }
+
+  Future<void> _checkNewPlaces() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastCount = prefs.getInt('last_known_places') ?? 0;
+    final current = widget.places.length;
+    await prefs.setInt('last_known_places', current);
+    if (current > lastCount && lastCount > 0) {
+      await prefs.setInt('pending_new_places', current - lastCount);
     }
   }
 
@@ -107,6 +119,15 @@ class _AppWithPlacesState extends State<_AppWithPlaces> {
             sharingService: sharing,
             places: widget.places,
           ),
+        ),
+        // Alertes de proximite : relie la source "lieux enregistres" a la
+        // carte perso (CollectionsViewModel) et restaure l'etat sauvegarde.
+        ChangeNotifierProxyProvider<CollectionsViewModel, ProximityService>(
+          create: (_) => ProximityService()..restore(),
+          update: (_, collections, proximity) {
+            proximity!.attachSavedPlacesSource(() => collections.myMap.places);
+            return proximity;
+          },
         ),
       ],
       child: Consumer<ThemeController>(

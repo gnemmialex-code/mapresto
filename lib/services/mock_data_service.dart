@@ -2808,6 +2808,14 @@ class MockDataService {
 
   // ---- Génération d'avis Google pour les lieux sans entrée dans _reviewSamples ----
 
+  /// Avis d'un lieu : extraits Google specifiques (_reviewSamples) si
+  /// disponibles, sinon avis generes coherents avec le type/la note.
+  ///
+  /// Expose pour que PlacesService (chemin Supabase) affiche AUSSI des avis
+  /// sur les fiches, et pas seulement le mode mock local.
+  static List<Review> reviewsForPlace(Place p) =>
+      _reviewSamples[p.id] ?? _generateReviews(p);
+
   static const _reviewAuthors = [
     'Sophie M.', 'Thomas L.', 'Julie B.', 'Kevin R.', 'Lea H.',
     'Marc D.', 'Chloe P.', 'Antoine D.', 'Noemie C.', 'Pierre V.',

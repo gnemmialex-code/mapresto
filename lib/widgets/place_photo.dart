@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import 'skeleton.dart';
+
 /// Affiche une photo d'un lieu qu'elle soit une URL reseau ou un asset local.
 ///
 /// Convention assets locaux :
@@ -33,7 +35,7 @@ class PlacePhoto extends StatelessWidget {
       return CachedNetworkImage(
         imageUrl: path,
         fit: fit,
-        placeholder: (_, _) => _ShimmerBox(color: fallbackColor),
+        placeholder: (_, _) => const _ShimmerBox(),
         errorWidget: (_, _, _) => _fallback(),
       );
     }
@@ -46,13 +48,11 @@ class PlacePhoto extends StatelessWidget {
 }
 
 class _ShimmerBox extends StatelessWidget {
-  const _ShimmerBox({this.color});
-  final Color? color;
+  const _ShimmerBox();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: (color ?? Colors.grey.shade700).withValues(alpha: 0.25),
-    );
+    // Shimmer anime : impression de chargement bien plus fluide qu'un gris fixe.
+    return const Shimmer(child: Skeleton(height: double.infinity, radius: 0));
   }
 }

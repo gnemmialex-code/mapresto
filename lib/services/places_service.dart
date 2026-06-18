@@ -44,6 +44,31 @@ class PlacesService {
     // 'p01': ['https://...'],
   };
 
+  // ── LIENS INSTAGRAM PAR LIEU (override manuel) ───────────────────────────────
+  //
+  // Par defaut, le lien Instagram d'un lieu est un lien de HASHTAG genere a
+  // partir de son nom (best-effort, pas toujours exact). Pour pointer vers le
+  // VRAI compte Instagram de l'etablissement, ajoutez une entree ici :
+  //
+  //   Cle   = ID du lieu (ex: 'p01')
+  //   Valeur = URL du compte (ex: 'https://www.instagram.com/le_perchoir/')
+  //
+  // COMMENT VERIFIER / CHANGER UN LIEN :
+  //   1. Ouvrez la fiche du lieu dans l'app → bouton "Instagram" : il ouvre
+  //      l'URL actuelle. Si elle ne tombe pas sur le bon compte…
+  //   2. …trouvez le vrai @compte sur instagram.com, copiez l'URL du profil,
+  //   3. collez-la ci-dessous avec l'ID du lieu. Cet override est PRIORITAIRE
+  //      sur le lien hashtag auto.
+  //
+  // ─── EXEMPLES ────────────────────────────────────────────────────────────────
+  // 'p01': 'https://www.instagram.com/leperchoir/',
+  // 'p02': 'https://www.instagram.com/littlereddoorparis/',
+  // ─────────────────────────────────────────────────────────────────────────────
+  static const Map<String, String> _instagramMap = {
+    // ← Ajoutez vos comptes Instagram reels ici :
+    // 'p01': 'https://www.instagram.com/leperchoir/',
+  };
+
   // ── Auto-détection Supabase Storage ──────────────────────────────────────────
   //
   // Deux formats acceptés dans le bucket "place-videos" (public) :
@@ -199,7 +224,9 @@ class PlacesService {
     final mapsUrl = 'https://www.google.com/maps/search/?api=1&query='
         '${Uri.encodeComponent('${p.name} ${p.address}')}';
     final slug = p.name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
-    final instagramUrl = 'https://www.instagram.com/explore/tags/$slug/';
+    // Override manuel (_instagramMap) prioritaire sur le lien hashtag auto.
+    final instagramUrl = _instagramMap[p.id] ??
+        'https://www.instagram.com/explore/tags/$slug/';
 
     return Place(
       id: p.id,
@@ -233,7 +260,11 @@ class PlacesService {
                   ? _autoVideoUrls(p.id)  // Optimiste : on tente, le player filtre
                   : [p.id.hashCode.isEven ? _videoA : _videoB], // Mode mock
       originalVideos: const [],
-      reviews: const [],
+      // Avis : ceux de la source si presents, sinon extraits Google /
+      // generes (pour que les fiches Supabase affichent aussi des avis).
+      reviews: p.reviews.isNotEmpty
+          ? p.reviews
+          : MockDataService.reviewsForPlace(p),
     );
   }
 

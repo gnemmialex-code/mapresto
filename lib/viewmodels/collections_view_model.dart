@@ -1,9 +1,11 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/collection_style.dart';
 import '../models/place.dart';
+import '../models/place_annotation.dart';
 import '../models/user_collection.dart';
 import '../services/mock_data_service.dart';
 import '../services/sharing_service.dart';
@@ -37,6 +39,7 @@ class CollectionsViewModel extends ChangeNotifier {
       places: const [],
     );
     _referralCode = _generateReferralCode();
+    _loadAnnotations();
   }
 
   /// Limite de base de lieux pour le plan gratuit (carte perso).
@@ -63,6 +66,9 @@ class CollectionsViewModel extends ChangeNotifier {
   int _referralCount = 0;
   int _bonusPlaces = 0;
   DateTime? _premiumUntil;
+
+  // ---- Annotations (notes + catégories par lieu) ----
+  Map<String, PlaceAnnotation> _annotations = {};
 
   List<UserCollection> get collections => List.unmodifiable(_collections);
   List<CollectionStyle> get availableStyles => _dataService.getStyles();
@@ -137,6 +143,42 @@ class CollectionsViewModel extends ChangeNotifier {
   }
 
   // ---- Parrainage (actions) ----
+
+  // ---- Annotations ----
+
+  PlaceAnnotation? annotationFor(String placeId) => _annotations[placeId];
+
+  List<String> get allCategories => _annotations.values
+      .map((a) => a.category)
+      .where((c) => c.isNotEmpty)
+      .toSet()
+      .toList()
+    ..sort();
+
+  Future<void> setAnnotation(
+    String placeId, {
+    required String note,
+    required String category,
+  }) async {
+    _annotations[placeId] = PlaceAnnotation(
+      placeId: placeId,
+      note: note,
+      category: category,
+    );
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        'place_annotations', PlaceAnnotation.encodeMap(_annotations));
+  }
+
+  Future<void> _loadAnnotations() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('place_annotations');
+    if (raw != null) {
+      _annotations = PlaceAnnotation.decodeMap(raw);
+      notifyListeners();
+    }
+  }
 
   String _generateReferralCode() {
     final n = Random().nextInt(9000) + 1000;

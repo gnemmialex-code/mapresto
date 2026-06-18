@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../services/proximity_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
+import '../../utils/haptics.dart';
 import '../../viewmodels/collections_view_model.dart';
 import '../../viewmodels/theme_controller.dart';
+import '../../widgets/concierge_card.dart';
 import '../../widgets/primary_button.dart';
 import '../referral/referral_screen.dart';
 
@@ -87,7 +90,23 @@ class ProfileScreen extends StatelessWidget {
           const _ThemeSelector(),
           const SizedBox(height: 16),
 
+          Text('Notifications', style: AppTypography.subtitle),
+          const SizedBox(height: 8),
+          const _ProximityToggleCard(),
+          const SizedBox(height: 16),
+
           Text('Parametres', style: AppTypography.subtitle),
+          const SizedBox(height: 8),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.support_agent, color: Color(0xFF25D366)),
+              title: const Text('Conciergerie'),
+              subtitle: const Text(
+                  'Réservation, renseignements, recommandations (WhatsApp)'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showConciergeSheet(context),
+            ),
+          ),
           const SizedBox(height: 8),
           Card(
             child: ListTile(
@@ -113,6 +132,71 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Carte de reglage des alertes de proximite.
+class _ProximityToggleCard extends StatelessWidget {
+  const _ProximityToggleCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final proximity = context.watch<ProximityService>();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              secondary: const Icon(Icons.notifications_active,
+                  color: AppColors.primary),
+              title: const Text('Alertes à proximité'),
+              subtitle: Text(
+                'Recevez une notification quand vous passez près d\'un lieu '
+                'enregistré dans Paris.',
+                style: AppTypography.caption,
+              ),
+              value: proximity.enabled,
+              onChanged: proximity.busy
+                  ? null
+                  : (v) async {
+                      Haptics.selection();
+                      final ok = await proximity.setEnabled(v);
+                      if (!context.mounted) return;
+                      if (v && !ok) {
+                        Haptics.warning();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                                'Autorisez la localisation et les notifications '
+                                'pour activer les alertes.'),
+                          ),
+                        );
+                      }
+                    },
+            ),
+            const Divider(height: 16),
+            Row(
+              children: [
+                Icon(Icons.info_outline,
+                    size: 14, color: AppColors.textSecondary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Nécessite l\'accès à votre position en continu. '
+                    'Désactivable à tout moment ici.',
+                    style: AppTypography.caption
+                        .copyWith(color: AppColors.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

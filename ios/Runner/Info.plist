@@ -4,6 +4,8 @@
 <dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Pour afficher les etablissements autour de vous.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Pour vous alerter quand vous passez pres d'un lieu enregistre, meme en arriere-plan.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Pour joindre des photos a vos propositions d'adresses et avis.</string>
 	<key>NSCameraUsageDescription</key>

@@ -3,6 +3,10 @@
 *.log
 *.pyc
 *.swp
+
+# Outils locaux (agents / assistant) — ne pas versionner
+.claude/
+.agents/
 .DS_Store
 .atom/
 .build/

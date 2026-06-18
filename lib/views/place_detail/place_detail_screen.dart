@@ -12,6 +12,7 @@ import '../../viewmodels/collections_view_model.dart';
 import '../../viewmodels/user_reviews_view_model.dart';
 import '../../viewmodels/user_tags_view_model.dart';
 import '../maps/create_my_map_screen.dart';
+import '../../widgets/concierge_card.dart';
 import '../../widgets/place_photo.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/tag_chip.dart';
@@ -110,58 +111,6 @@ class PlaceDetailContent extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // ---- Liens (Maps / Instagram / Site) ----
-          _LinkButtons(place: place, color: color),
-          const SizedBox(height: 20),
-
-          // ---- Galerie (photos + videos) ----
-          if (place.photos.isNotEmpty || place.instagramVideos.isNotEmpty) ...[
-            _GallerySection(
-              photos: place.photos,
-              videos: place.instagramVideos,
-              color: color,
-            ),
-            const SizedBox(height: 20),
-          ],
-
-          // ---- Avis (reels via Google) ----
-          _ReviewsSection(place: place),
-          const SizedBox(height: 20),
-
-          // ---- Ma note & mes tags (personnels) ----
-          _UserAnnotations(place: place),
-          const SizedBox(height: 20),
-
-          // ---- Frequentation ----
-          if (place.crowdTags.isNotEmpty) ...[
-            _SectionTitle('Frequentation'),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final t in place.crowdTags)
-                  TagChip(label: t, color: AppColors.accent),
-              ],
-            ),
-            const SizedBox(height: 16),
-          ],
-
-          // ---- Horaires d'affluence ----
-          if (place.peakTags.isNotEmpty) ...[
-            _SectionTitle("Horaires d'affluence"),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final t in place.peakTags)
-                  TagChip(label: t, color: AppColors.hotel),
-              ],
-            ),
-            const SizedBox(height: 16),
-          ],
-
           // ---- Adresse ----
           _SectionTitle('Adresse'),
           const SizedBox(height: 6),
@@ -211,7 +160,21 @@ class PlaceDetailContent extends StatelessWidget {
           ],
           const SizedBox(height: 20),
 
-          // ---- Tags ----
+          // ---- Galerie (photos + videos) ----
+          if (place.photos.isNotEmpty || place.instagramVideos.isNotEmpty) ...[
+            _GallerySection(
+              photos: place.photos,
+              videos: place.instagramVideos,
+              color: color,
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          // ---- Avis (reels via Google) ----
+          _ReviewsSection(place: place),
+          const SizedBox(height: 20),
+
+          // ---- Ambiance & style ----
           if (place.allTags.isNotEmpty) ...[
             _SectionTitle('Ambiance & style'),
             const SizedBox(height: 8),
@@ -230,7 +193,47 @@ class PlaceDetailContent extends StatelessWidget {
             const SizedBox(height: 20),
           ],
 
-          // (videos maintenant intégrées dans la galerie)
+          // ---- Liens (Maps / Instagram / Site) ----
+          _LinkButtons(place: place, color: color),
+          const SizedBox(height: 20),
+
+          // ---- Conciergerie (ligne pro mapresto, pas le lieu) ----
+          ConciergePlaceBanner(place: place),
+          const SizedBox(height: 20),
+
+          // ---- Frequentation ----
+          if (place.crowdTags.isNotEmpty) ...[
+            _SectionTitle('Frequentation'),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final t in place.crowdTags)
+                  TagChip(label: t, color: AppColors.accent),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // ---- Horaires d'affluence ----
+          if (place.peakTags.isNotEmpty) ...[
+            _SectionTitle("Horaires d'affluence"),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final t in place.peakTags)
+                  TagChip(label: t, color: AppColors.hotel),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // ---- Ma note & mes tags (personnels) ----
+          _UserAnnotations(place: place),
+          const SizedBox(height: 20),
 
           // ---- Nos videos (interviews maison) ----
           Row(
@@ -820,14 +823,25 @@ class _LinkChip extends StatelessWidget {
   }
 }
 
-/// Section avis Google : 5 cartes style Google, toujours visibles directement.
-class _ReviewsSection extends StatelessWidget {
+/// Section avis Google : 5 cartes visibles, le reste derriere "Voir tout".
+class _ReviewsSection extends StatefulWidget {
   const _ReviewsSection({required this.place});
   final Place place;
 
   @override
+  State<_ReviewsSection> createState() => _ReviewsSectionState();
+}
+
+class _ReviewsSectionState extends State<_ReviewsSection> {
+  static const _previewCount = 5;
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
-    final reviews = place.reviews.take(5).toList();
+    final place = widget.place;
+    final all = place.reviews;
+    final shown = _expanded ? all : all.take(_previewCount).toList();
+    final hidden = all.length - _previewCount;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -864,7 +878,7 @@ class _ReviewsSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        if (reviews.isEmpty) ...[
+        if (all.isEmpty) ...[
           Text(
             'Consultez les avis directement sur Google.',
             style: AppTypography.caption,
@@ -877,10 +891,27 @@ class _ReviewsSection extends StatelessWidget {
               label: const Text('Voir les avis (Google)'),
             ),
         ] else ...[
-          for (final r in reviews) _GoogleReviewCard(review: r),
+          for (final r in shown) _GoogleReviewCard(review: r),
+          // Bouton "Voir tout / Voir moins" si plus de 5 avis.
+          if (hidden > 0)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => setState(() => _expanded = !_expanded),
+                icon: Icon(
+                  _expanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  size: 18,
+                ),
+                label: Text(_expanded
+                    ? 'Voir moins'
+                    : 'Voir les $hidden autres avis'),
+              ),
+            ),
           if (place.mapsUrl != null)
             Padding(
-              padding: const EdgeInsets.only(top: 2),
+              padding: const EdgeInsets.only(top: 6),
               child: OutlinedButton.icon(
                 onPressed: () => _launchUrl(place.mapsUrl!),
                 icon: const Icon(Icons.open_in_new, size: 16),
