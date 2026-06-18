@@ -105,6 +105,15 @@ class PlacesService {
         for (var i = 1; i <= _maxPhotos; i++) _storageUrl(placeId, i),
       ];
 
+  // Génère les slots vidéo Supabase de façon optimiste (comme pour les photos).
+  // Les slots inexistants sont filtrés par _SmartVideoTile (galerie)
+  // et par VideoFeedScreen (feed) via GET Range asynchrone.
+  static List<String> _autoVideoUrls(String placeId) => [
+        for (var i = 1; i <= _maxVideosPerFolder; i++)
+          '${Config.supabaseUrl}'
+          '/storage/v1/object/public/place-videos/$placeId/$i.mp4',
+      ];
+
   // Mots-clés cuisine extraits des styleTags lors de l'enrichissement.
   static const _cuisineKeywords = {
     'bistrot', 'brasserie', 'gastronomique', 'brunch', 'italien', 'pizza',
@@ -217,11 +226,11 @@ class PlacesService {
       instagramUrl: instagramUrl,
       websiteUrl: p.websiteUrl,
       instagramVideos: storageVideos.containsKey(p.id)
-          ? storageVideos[p.id]!          // Supabase Storage (auto-détecté)
+          ? storageVideos[p.id]!          // Supabase list() a détecté ce lieu
           : _videoMap.containsKey(p.id)
               ? _videoMap[p.id]!          // Override manuel _videoMap
               : Config.isSupabaseConfigured
-                  ? const []              // Supabase sans vidéo = pas de démo
+                  ? _autoVideoUrls(p.id)  // Optimiste : on tente, le player filtre
                   : [p.id.hashCode.isEven ? _videoA : _videoB], // Mode mock
       originalVideos: const [],
       reviews: const [],

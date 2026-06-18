@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
@@ -25,14 +26,20 @@ class _VideoFeedScreenState extends State<VideoFeedScreen> {
   final PageController _controller = PageController();
   int _index = 0;
 
+  // null = vérification en cours, [] = aucune vidéo valide, [...] = prêt
+  List<({Place place, String url})>? _validEntries;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _validateVideos());
+  }
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
-
-  List<Place> _feed(PlacesViewModel vm) =>
-      vm.allPlaces.where((p) => _videoOf(p) != null).toList();
 
   static String? _videoOf(Place p) {
     if (p.instagramVideos.isNotEmpty) return p.instagramVideos.first;
@@ -41,13 +48,64 @@ class _VideoFeedScreenState extends State<VideoFeedScreen> {
     return null;
   }
 
+  Future<void> _validateVideos() async {
+    final vm = context.read<PlacesViewModel>();
+    final candidates = vm.allPlaces
+        .map((p) => (place: p, url: _videoOf(p)))
+        .where((e) => e.url != null)
+        .toList();
+
+    // Vérifie toutes les URLs en parallèle (GET Range = 1 octet, CORS-safe).
+    final results = await Future.wait(
+      candidates.map((e) async {
+        try {
+          final r = await http
+              .get(Uri.parse(e.url!), headers: {'Range': 'bytes=0-0'})
+              .timeout(const Duration(seconds: 4));
+          if (r.statusCode == 200 || r.statusCode == 206) {
+            return (place: e.place, url: e.url!);
+          }
+        } catch (_) {}
+        return null;
+      }),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _validEntries = results
+          .whereType<({Place place, String url})>()
+          .toList();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final places = _feed(context.watch<PlacesViewModel>());
+    // Garde l'écoute du PlacesViewModel pour les filtres mais on utilise
+    // _validEntries (déjà validé) pour le contenu du feed.
+    context.watch<PlacesViewModel>();
+
+    if (_validEntries == null) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(height: 16),
+              Text('Chargement des vidéos…',
+                  style: TextStyle(color: Colors.white70, fontSize: 14)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final entries = _validEntries!;
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: places.isEmpty
+      body: entries.isEmpty
           ? const Center(
               child: Text('Aucune video disponible',
                   style: TextStyle(color: Colors.white70)),
@@ -55,12 +113,12 @@ class _VideoFeedScreenState extends State<VideoFeedScreen> {
           : PageView.builder(
               controller: _controller,
               scrollDirection: Axis.vertical,
-              itemCount: places.length,
+              itemCount: entries.length,
               onPageChanged: (i) => setState(() => _index = i),
               itemBuilder: (context, i) {
                 return _VideoPage(
-                  place: places[i],
-                  videoUrl: _videoOf(places[i])!,
+                  place: entries[i].place,
+                  videoUrl: entries[i].url,
                   play: widget.isActive && i == _index,
                   showSwipeHint: i == 0,
                 );
