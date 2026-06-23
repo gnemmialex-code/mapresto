@@ -8,7 +8,6 @@ import '../../utils/haptics.dart';
 import '../../viewmodels/collections_view_model.dart';
 import '../../viewmodels/theme_controller.dart';
 import '../../widgets/concierge_card.dart';
-import '../../widgets/primary_button.dart';
 import '../referral/referral_screen.dart';
 
 /// Ecran profil simple : identite, statut freemium, raccourcis.
@@ -35,51 +34,6 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text('Alex', style: AppTypography.title),
                 Text('gnemmialex@gmail.com', style: AppTypography.caption),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // ---- Carte statut freemium ----
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.primary, AppColors.primaryDark],
-              ),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.workspace_premium,
-                        color: AppColors.premium),
-                    const SizedBox(width: 8),
-                    Text('Compte gratuit',
-                        style: AppTypography.subtitle
-                            .copyWith(color: Colors.white)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Vous voyez jusqu\'a 5 lieux par recherche filtree. '
-                  'Passez Premium pour tout debloquer.',
-                  style: AppTypography.caption.copyWith(color: Colors.white70),
-                ),
-                const SizedBox(height: 14),
-                PrimaryButton(
-                  label: 'Passer Premium',
-                  icon: Icons.lock_open,
-                  color: AppColors.premium,
-                  onPressed: () {
-                    // >>> POINT DE BRANCHEMENT PAYWALL <<<
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Paywall a brancher ici.')),
-                    );
-                  },
-                ),
               ],
             ),
           ),

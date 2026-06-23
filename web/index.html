@@ -15,7 +15,7 @@
 
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>ParisMap · iPhone 16</title>
+  <title>ParisMap · iPad Pro</title>
   <link rel="manifest" href="manifest.json">
 
   <!-- Préchargement réseau de Material Icons (priorité haute). -->
@@ -23,10 +23,12 @@
 
   <style>
     :root {
-      /* iPhone 16 : viewport logique 393 x 852 pt */
-      --w: 393px;
-      --h: 852px;
-      --radius: 56px;
+      /* iPad Pro 12.9" : viewport logique 1024 x 1366 pt (portrait) */
+      --w: 1024px;
+      --h: 1366px;
+      --radius: 46px;
+      --bezel: 18px;
+      --scale: 1;
     }
     * { box-sizing: border-box; }
     html, body {
@@ -40,17 +42,23 @@
       overflow: hidden;
     }
 
-    /* Châssis du téléphone (tranche titane + bezel noir) */
-    .phone {
+    /* Mise à l'échelle pour tenir dans la fenêtre quelle que soit sa taille */
+    .stage {
+      transform: scale(var(--scale));
+      transform-origin: center center;
+    }
+
+    /* Châssis de l'iPad (tranche aluminium + bezel noir uniforme) */
+    .ipad {
       position: relative;
       border-radius: var(--radius);
       background: #0a0a0a;
-      padding: 12px;
+      padding: var(--bezel);
       box-shadow:
         0 0 0 2px #2c2c2e,
-        0 0 0 12px #3a3a3c,
-        0 0 0 13px #1c1c1e,
-        0 30px 80px rgba(0,0,0,.65);
+        0 0 0 10px #3a3a3c,
+        0 0 0 11px #1c1c1e,
+        0 30px 90px rgba(0,0,0,.65);
     }
 
     /* Écran : c'est l'élément hôte de Flutter */
@@ -58,7 +66,7 @@
       position: relative;
       width: var(--w);
       height: var(--h);
-      border-radius: calc(var(--radius) - 12px);
+      border-radius: calc(var(--radius) - var(--bezel));
       overflow: hidden;
       background: #ffffff;
     }
@@ -75,8 +83,8 @@
     }
     .loading::after {
       content: '';
-      width: 36px;
-      height: 36px;
+      width: 44px;
+      height: 44px;
       border: 3px solid #d1d1d6;
       border-top-color: #007AFF;
       border-radius: 50%;
@@ -84,31 +92,29 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Dynamic Island (superposée par-dessus l'app) */
-    .island {
+    /* Caméra frontale centrée sur le bezel haut (iPad portrait) */
+    .camera {
       position: absolute;
-      top: 11px;
+      top: calc(var(--bezel) / 2 - 4px);
       left: 50%;
       transform: translateX(-50%);
-      width: 124px;
-      height: 35px;
-      background: #000;
-      border-radius: 20px;
+      width: 9px;
+      height: 9px;
+      background: #15151a;
+      border-radius: 50%;
+      box-shadow: inset 0 0 0 1px #2c2c30, 0 0 2px rgba(80,120,255,.4);
       z-index: 2147483000;
-      pointer-events: none;
     }
 
-    /* Boutons latéraux */
+    /* Boutons : power (haut, droite) + volumes (droite) */
     .btn {
       position: absolute;
       background: linear-gradient(180deg, #4a4a4d, #2a2a2c);
-      border-radius: 2px 0 0 2px;
+      border-radius: 3px;
     }
-    .btn.right { border-radius: 0 2px 2px 0; }
-    .action  { left: -15px; top: 130px; width: 4px; height: 30px; }
-    .vol-up  { left: -15px; top: 185px; width: 4px; height: 58px; }
-    .vol-dn  { left: -15px; top: 255px; width: 4px; height: 58px; }
-    .power   { right: -15px; top: 205px; width: 4px; height: 95px; }
+    .power   { top: -8px; right: 110px; width: 70px; height: 4px; border-radius: 3px 3px 0 0; }
+    .vol-up  { right: -8px; top: 90px; width: 4px; height: 56px; border-radius: 0 3px 3px 0; }
+    .vol-dn  { right: -8px; top: 156px; width: 4px; height: 56px; border-radius: 0 3px 3px 0; }
 
     .hint {
       position: fixed;
@@ -120,24 +126,39 @@
   </style>
 </head>
 <body>
-  <div class="phone">
-    <span class="btn action"></span>
-    <span class="btn vol-up"></span>
-    <span class="btn vol-dn"></span>
-    <span class="btn right power"></span>
-    <!-- Flutter rend directement dans cet élément (instance unique) -->
-    <div id="flutter-screen">
-      <div class="island"></div>
-      <div class="loading" id="loading-overlay"></div>
+  <div class="stage">
+    <div class="ipad">
+      <span class="btn power"></span>
+      <span class="btn vol-up"></span>
+      <span class="btn vol-dn"></span>
+      <!-- Flutter rend directement dans cet élément (instance unique) -->
+      <div id="flutter-screen">
+        <div class="camera"></div>
+        <div class="loading" id="loading-overlay"></div>
+      </div>
     </div>
   </div>
-  <div class="hint">ParisMap Video Guide — iPhone 16 (393 × 852)</div>
+  <div class="hint">ParisMap Video Guide — iPad Pro 12.9" (1024 × 1366)</div>
 
-  <!-- Chargement Flutter ciblant hostElement = l'écran du téléphone.
+  <!-- Chargement Flutter ciblant hostElement = l'écran de l'iPad.
        Les jetons {{flutter_js}} et {{flutter_build_config}} sont remplaces
        par `flutter build web` (ils fournissent la config de build, sans
        laquelle l'app ne sait pas quel point d'entree charger). -->
   <script>
+    // Ajuste l'échelle du châssis pour qu'il tienne entièrement dans la fenêtre.
+    function fitStage() {
+      const totalW = 1024 + 18 * 2 + 22; // écran + bezels + ombres latérales
+      const totalH = 1366 + 18 * 2 + 22;
+      const scale = Math.min(
+        window.innerWidth / totalW,
+        (window.innerHeight - 40) / totalH, // marge pour le libellé du bas
+        1
+      );
+      document.documentElement.style.setProperty('--scale', scale.toFixed(4));
+    }
+    window.addEventListener('resize', fitStage);
+    fitStage();
+
     {{flutter_js}}
     {{flutter_build_config}}
 
@@ -146,9 +167,6 @@
       // On charge la police via FontFace API et on l'ajoute à document.fonts
       // AVANT de démarrer Flutter. Ainsi, quand Flutter rend la 1re frame,
       // la police est déjà disponible et aucune icône ne s'affiche en "□ X □".
-      // Le bloc CSS @font-face de Flutter est injecté dynamiquement (après coup)
-      // et ne peut pas avoir font-display:block — c'est pourquoi la solution CSS
-      // seule ne fonctionnait pas.
       try {
         const font = new FontFace(
           'MaterialIcons',
