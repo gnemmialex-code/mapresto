@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
+import '../viewmodels/map_view_model.dart';
 import '../viewmodels/places_view_model.dart';
 import '../viewmodels/theme_controller.dart';
 import 'feed/video_feed_screen.dart';
@@ -24,6 +25,7 @@ class RootNavigation extends StatefulWidget {
 class _RootNavigationState extends State<RootNavigation>
     with SingleTickerProviderStateMixin {
   int _index = 0;
+  int _lastFocusTick = 0;
 
   late final AnimationController _anim = AnimationController(
     vsync: this,
@@ -41,6 +43,17 @@ class _RootNavigationState extends State<RootNavigation>
     NotificationService.instance.selectedPlaceId
         .addListener(_handleNotificationTap);
     WidgetsBinding.instance.addPostFrameCallback((_) => _handleNotificationTap());
+    // Bascule sur l'onglet Carte quand "Voir sur la carte" est tape.
+    _lastFocusTick = context.read<MapViewModel>().focusTick;
+    context.read<MapViewModel>().addListener(_handleMapFocus);
+  }
+
+  void _handleMapFocus() {
+    if (!mounted) return;
+    final tick = context.read<MapViewModel>().focusTick;
+    if (tick == _lastFocusTick) return;
+    _lastFocusTick = tick;
+    if (_index != 0) _select(0);
   }
 
   void _handleNotificationTap() {
@@ -84,6 +97,7 @@ class _RootNavigationState extends State<RootNavigation>
   void dispose() {
     NotificationService.instance.selectedPlaceId
         .removeListener(_handleNotificationTap);
+    context.read<MapViewModel>().removeListener(_handleMapFocus);
     _anim.dispose();
     super.dispose();
   }

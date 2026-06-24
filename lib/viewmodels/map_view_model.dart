@@ -12,6 +12,13 @@ class MapViewModel extends ChangeNotifier {
   Place? _selectedPlace;
   Place? get selectedPlace => _selectedPlace;
 
+  // ---- Demande de recentrage ("Voir sur la carte") ----
+  // Le compteur permet de detecter une nouvelle demande meme pour le meme lieu.
+  Place? _focusTarget;
+  Place? get focusTarget => _focusTarget;
+  int _focusTick = 0;
+  int get focusTick => _focusTick;
+
   void selectPlace(Place place) {
     _selectedPlace = place;
     notifyListeners();
@@ -19,6 +26,15 @@ class MapViewModel extends ChangeNotifier {
 
   void clearSelection() {
     _selectedPlace = null;
+    notifyListeners();
+  }
+
+  /// Demande a la carte de se recentrer sur [place] (basculer sur l'onglet
+  /// Carte puis animer la camera vers le lieu).
+  void requestFocus(Place place) {
+    _selectedPlace = place;
+    _focusTarget = place;
+    _focusTick++;
     notifyListeners();
   }
 }

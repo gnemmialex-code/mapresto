@@ -26,6 +26,7 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
   MapStyle _style = MapStyle.plan;
+  int _lastFocusTick = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +35,20 @@ class _MapScreenState extends State<MapScreen> {
     final locked = placesVm.lockedPlaces;
     final retina = RetinaMode.isHighDensity(context);
     final mapDark = context.watch<ThemeController>().mapIsDark;
+
+    // Recentrage demande depuis une fiche ("Voir sur la carte").
+    final mapVm = context.watch<MapViewModel>();
+    if (mapVm.focusTick != _lastFocusTick) {
+      _lastFocusTick = mapVm.focusTick;
+      final target = mapVm.focusTarget;
+      if (target != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _mapController.move(LatLng(target.latitude, target.longitude), 16);
+          showPlaceQuickSheet(context, target);
+        });
+      }
+    }
 
     return Scaffold(
       body: Stack(

@@ -9,6 +9,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/place_visuals.dart';
 import '../../viewmodels/collections_view_model.dart';
+import '../../viewmodels/map_view_model.dart';
 import '../../viewmodels/user_reviews_view_model.dart';
 import '../../viewmodels/user_tags_view_model.dart';
 import '../maps/create_my_map_screen.dart';
@@ -124,7 +125,12 @@ class PlaceDetailContent extends StatelessWidget {
           if (!embedded) ...[
             const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                // Demande le recentrage puis revient a la navigation racine
+                // (onglet Carte) quelle que soit la profondeur de navigation.
+                context.read<MapViewModel>().requestFocus(place);
+                Navigator.of(context).popUntil((r) => r.isFirst);
+              },
               icon: const Icon(Icons.map_outlined, size: 18),
               label: const Text('Voir sur la carte'),
             ),

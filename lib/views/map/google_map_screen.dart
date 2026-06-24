@@ -31,6 +31,7 @@ class _GoogleMapScreenState extends State<GoogleMapScreen> {
   // Derniere position camera (pour basculer en 3D au bon endroit).
   LatLng _target = _paris;
   double _zoom = MapViewModel.defaultZoom;
+  int _lastFocusTick = 0;
 
   // Hue du marker selon le type de lieu.
   double _hue(PlaceType type) {
@@ -142,6 +143,23 @@ class _GoogleMapScreenState extends State<GoogleMapScreen> {
     final placesVm = context.watch<PlacesViewModel>();
     final visible = placesVm.visiblePlaces;
     final locked = placesVm.lockedPlaces;
+
+    // Recentrage demande depuis une fiche ("Voir sur la carte").
+    final mapVm = context.watch<MapViewModel>();
+    if (mapVm.focusTick != _lastFocusTick) {
+      _lastFocusTick = mapVm.focusTick;
+      final place = mapVm.focusTarget;
+      if (place != null) {
+        final dest = LatLng(place.latitude, place.longitude);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _target = dest;
+          _zoom = 16;
+          _controller?.animateCamera(CameraUpdate.newLatLngZoom(dest, 16));
+          showPlaceQuickSheet(context, place);
+        });
+      }
+    }
 
     return Scaffold(
       body: Stack(
